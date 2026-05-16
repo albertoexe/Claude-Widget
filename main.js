@@ -102,7 +102,9 @@ function pickOrg (orgs) {
   const chatOrgs = orgs.filter(o => o.capabilities?.chat === true)
   const pool     = chatOrgs.length ? chatOrgs : orgs
   const team     = pool.find(o => !o.name?.toLowerCase().includes('personal'))
-  return team || pool[0]
+  const org      = team || pool[0]
+  // Normalise: usage endpoint requires the full UUID, not the short `id`
+  return { ...org, _uuid: org.uuid ?? org.id }
 }
 
 // ── Local stats (stats-cache.json) ────────────────────────────────────────────
@@ -202,6 +204,16 @@ async function doRefresh () {
       Promise.resolve(readLocalStats())
     ])
 
+    // Detect API-level error responses before trying to parse
+    if (rawApi?.type === 'error') {
+      throw new Error(`API error: ${rawApi.error?.message ?? JSON.stringify(rawApi.error)}`)
+    }
+
+    // ── TEMP DEBUG — remove once usage field names confirmed ──────────────
+    console.log('[data] raw API keys:', Object.keys(rawApi))
+    console.log('[data] raw API:', JSON.stringify(rawApi, null, 2))
+    // ─────────────────────────────────────────────────────────────────────
+
     const api = parseApiUsage(rawApi)
     console.log('[data] Session:', api.sessionPct?.toFixed(1), '%  Weekly:', api.weeklyPct?.toFixed(1), '%')
 
@@ -248,11 +260,11 @@ async function onSessionCaptured (sessionKey) {
     if (!orgs.length) throw new Error('No organisations returned')
 
     const org = pickOrg(orgs)
-    store.set('selectedOrgId', org.id)
-    console.log(`[auth] Org resolved: ${org.name} (${org.id})`)
+    store.set('selectedOrgId', org._uuid)
+    console.log(`[auth] Org resolved: ${org.name} (uuid: ${org._uuid})`)
 
     resizeMainWindow('widget')
-    mainWindow?.webContents.send('auth:success', { orgId: org.id, orgName: org.name })
+    mainWindow?.webContents.send('auth:success', { orgId: org._uuid, orgName: org.name })
     startRefreshLoop()
   } catch (e) {
     console.error('[auth] Org discovery failed:', e.message)
@@ -271,10 +283,11 @@ async function validateExistingSession () {
     if (!orgs.length) throw new Error('Empty org list')
 
     const org = pickOrg(orgs)
-    store.set('selectedOrgId', org.id)
+    store.set('selectedOrgId', org._uuid)
+    console.log(`[auth] Org re-validated: ${org.name} (uuid: ${org._uuid})`)
 
     resizeMainWindow('widget')
-    mainWindow?.webContents.send('auth:success', { orgId: org.id, orgName: org.name })
+    mainWindow?.webContents.send('auth:success', { orgId: org._uuid, orgName: org.name })
     startRefreshLoop()
     return true
   } catch (e) {
