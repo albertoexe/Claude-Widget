@@ -1,0 +1,42 @@
+{
+  "name": "claude-widget",
+  "version": "1.0.0",
+  "description": "Always-on-top Claude.ai usage widget — session %, weekly %, monthly tokens",
+  "main": "main.js",
+  "author": "Alberto De Col",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.induvation.claude-widget",
+    "productName": "Claude Widget",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.png"
+    }
+  }
+}

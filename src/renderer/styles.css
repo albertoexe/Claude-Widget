@@ -1,0 +1,208 @@
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens (dark theme — M1 only, light + system in M3) ─────────── */
+:root {
+  --bg:               #1a1a2e;
+  --bg-card:          #16213e;
+  --border:           #2a2a4a;
+  --text:             #e2e8f0;
+  --muted:            #718096;
+  --accent:           #7c3aed;
+  --accent-hover:     #6d28d9;
+  --success:          #48bb78;
+  --btn-secondary:    #2d3748;
+  --btn-secondary-h:  #4a5568;
+  --radius:           8px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Title bar ───────────────────────────────────────────────────────────── */
+#titlebar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  height: 38px;
+}
+
+#app-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#window-controls {
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 6px;
+}
+
+#window-controls button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s;
+}
+#window-controls button:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+/* ── Views ───────────────────────────────────────────────────────────────── */
+.view {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.hidden { display: none !important; }
+
+/* ── Login card ──────────────────────────────────────────────────────────── */
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-card h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ── Auth-ok card (M1 widget placeholder) ────────────────────────────────── */
+.auth-ok-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.org-label {
+  font-size: 12px;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Typography helpers ──────────────────────────────────────────────────── */
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+}
+
+.muted { color: var(--muted); }
+
+.status-text {
+  font-size: 14px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.status-text.success { color: var(--success); font-weight: 600; }
+
+/* ── Input ───────────────────────────────────────────────────────────────── */
+input[type="password"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  font-family: var(--font);
+  transition: border-color 0.15s;
+}
+input[type="password"]:focus { border-color: var(--accent); }
+input[type="password"]::placeholder { color: var(--muted); }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:active { opacity: 0.9; }
+
+.btn-secondary {
+  background: var(--btn-secondary);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s;
+}
+.btn-secondary:hover { background: var(--btn-secondary-h); }
+.btn-secondary:active { opacity: 0.9; }
