@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- CSP: scripts and styles from self only, no inline scripts -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,13 +13,17 @@
   <!-- Title bar (draggable region) -->
   <div id="titlebar">
     <span id="app-title">Claude Widget</span>
-    <div id="window-controls">
-      <button id="btn-minimize" title="Minimize">&#x2212;</button>
-      <button id="btn-close" title="Close">&#x00D7;</button>
+    <div id="titlebar-right">
+      <span id="org-name" class="org-badge"></span>
+      <div id="window-controls">
+        <button id="btn-refresh" title="Refresh now">&#x21BB;</button>
+        <button id="btn-minimize" title="Minimize">&#x2212;</button>
+        <button id="btn-close" title="Close">&#x00D7;</button>
+      </div>
     </div>
   </div>
 
-  <!-- ── View: loading / checking session ─────────────────────────────── -->
+  <!-- ── View: loading ────────────────────────────────────────────────── -->
   <div id="view-loading" class="view hidden">
     <p class="status-text">Checking session&hellip;</p>
   </div>
@@ -34,9 +37,7 @@
         your session automatically.
       </p>
       <button id="btn-auto-login" class="btn-primary">Auto-detect login</button>
-
       <div class="divider"><span>or</span></div>
-
       <label for="manual-key">Session key <span class="muted">(advanced)</span></label>
       <input id="manual-key" type="password" placeholder="Paste sessionKey value&hellip;" autocomplete="off" />
       <button id="btn-manual-login" class="btn-secondary">Use this key</button>
@@ -48,13 +49,52 @@
     <p class="status-text">Validating session&hellip;</p>
   </div>
 
-  <!-- ── View: widget (M1 placeholder — real UI in M2) ───────────────── -->
+  <!-- ── View: widget ─────────────────────────────────────────────────── -->
   <div id="view-widget" class="view hidden">
-    <div class="auth-ok-card">
-      <p class="status-text success">&#x2713;&nbsp; Auth OK</p>
-      <p id="org-name" class="muted org-label"></p>
-      <p class="hint">Usage data coming in M2.</p>
-      <button id="btn-logout" class="btn-secondary">Logout</button>
+    <div class="widget-body">
+
+      <!-- Session -->
+      <div class="usage-row" id="row-session">
+        <div class="row-header">
+          <span class="row-label">Session</span>
+          <span class="row-pct" id="session-pct">—</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="session-bar" style="width:0%"></div>
+        </div>
+        <span class="row-reset" id="session-reset"></span>
+      </div>
+
+      <!-- Weekly -->
+      <div class="usage-row" id="row-weekly">
+        <div class="row-header">
+          <span class="row-label">Weekly</span>
+          <span class="row-pct" id="weekly-pct">—</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
+        </div>
+        <span class="row-reset" id="weekly-reset"></span>
+      </div>
+
+      <!-- Monthly tokens (from stats-cache.json) -->
+      <div class="usage-row" id="row-monthly">
+        <div class="row-header">
+          <span class="row-label">Monthly <span class="local-badge">local</span></span>
+          <span class="row-pct" id="monthly-val">—</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill local" id="monthly-bar" style="width:0%"></div>
+        </div>
+        <span class="row-reset" id="monthly-sub"></span>
+      </div>
+
+    </div><!-- widget-body -->
+
+    <!-- Footer -->
+    <div class="widget-footer">
+      <span id="last-updated" class="footer-text"></span>
+      <button id="btn-logout" class="btn-ghost">logout</button>
     </div>
   </div>
 

@@ -43,6 +43,14 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('settings:response', (_e, data) => cb(data)),
   saveSettings: (patch) => ipcRenderer.send('settings:save', patch),
 
+  // ── Usage data ───────────────────────────────────────────────────────────
+  /** Main → renderer: fresh usage data */
+  onUsage: (cb) =>
+    ipcRenderer.on('usage:push', (_e, data) => cb(data)),
+
+  /** Renderer → main: request an immediate refresh */
+  requestUsage: () => ipcRenderer.send('usage:request'),
+
   // ── Utility ──────────────────────────────────────────────────────────────
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 })
