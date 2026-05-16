@@ -1,56 +1,42 @@
-'use strict'
+﻿'use strict'
 
 /**
- * preload.js — IPC bridge between main process and renderer.
+ * preload.js - IPC bridge between main process and renderer.
  * contextIsolation: true, so we use contextBridge.
- * Only expose what the renderer actually needs — nothing more.
+ * Only expose what the renderer actually needs.
  */
 
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('api', {
-  // ── Auth ────────────────────────────────────────────────────────────────
-  /** Open the login BrowserWindow (auto-detect flow) */
+  // Auth
   startLogin: () => ipcRenderer.send('auth:start'),
-
-  /** Inject a session key manually (advanced users) */
   manualLogin: (key) => ipcRenderer.send('auth:manual-key', key),
-
-  /** Log out and clear stored credentials */
   logout: () => ipcRenderer.send('auth:logout'),
-
-  /** Main → renderer: no stored credentials found, show login */
   onAuthNeeded: (cb) => ipcRenderer.on('auth:needed', () => cb()),
-
-  /** Main → renderer: session captured, validating with API */
   onAuthValidating: (cb) => ipcRenderer.on('auth:validating', () => cb()),
-
-  /** Main → renderer: session valid, org resolved */
-  onAuthSuccess: (cb) =>
-    ipcRenderer.on('auth:success', (_e, data) => cb(data)),
-
-  /** Main → renderer: session expired or invalid */
+  onAuthSuccess: (cb) => ipcRenderer.on('auth:success', (_event, data) => cb(data)),
   onAuthExpired: (cb) => ipcRenderer.on('auth:expired', () => cb()),
 
-  // ── Window controls ──────────────────────────────────────────────────────
+  // Window controls
   minimize: () => ipcRenderer.send('window:minimize'),
   close: () => ipcRenderer.send('window:close'),
   setAlwaysOnTop: (flag) => ipcRenderer.send('window:alwaysOnTop', flag),
+  setWindowHeight: (height) => ipcRenderer.send('window:setHeight', height),
 
-  // ── Settings ─────────────────────────────────────────────────────────────
+  // Settings
   getSettings: () => ipcRenderer.send('settings:get'),
-  onSettings: (cb) =>
-    ipcRenderer.on('settings:response', (_e, data) => cb(data)),
   saveSettings: (patch) => ipcRenderer.send('settings:save', patch),
+  openSettings: () => ipcRenderer.send('settings:open'),
+  closeSettings: () => ipcRenderer.send('settings:close'),
+  onSettings: (cb) => ipcRenderer.on('settings:response', (_event, data) => cb(data)),
+  onSettingsShow: (cb) => ipcRenderer.on('settings:show', () => cb()),
+  onCompactChange: (cb) => ipcRenderer.on('compact:change', (_event, value) => cb(value)),
 
-  // ── Usage data ───────────────────────────────────────────────────────────
-  /** Main → renderer: fresh usage data */
-  onUsage: (cb) =>
-    ipcRenderer.on('usage:push', (_e, data) => cb(data)),
-
-  /** Renderer → main: request an immediate refresh */
+  // Usage data
+  onUsage: (cb) => ipcRenderer.on('usage:push', (_event, data) => cb(data)),
   requestUsage: () => ipcRenderer.send('usage:request'),
 
-  // ── Utility ──────────────────────────────────────────────────────────────
+  // Utility
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 })

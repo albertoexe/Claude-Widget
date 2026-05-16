@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -9,95 +9,186 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-  <!-- Title bar (draggable region) -->
   <div id="titlebar">
     <span id="app-title">Claude Widget</span>
     <div id="titlebar-right">
       <span id="org-name" class="org-badge"></span>
       <div id="window-controls">
         <button id="btn-refresh" title="Refresh now">&#x21BB;</button>
+        <button id="btn-details" title="Toggle details">&#9661;</button>
+        <button id="btn-compact" title="Toggle compact mode">&#9633;</button>
+        <button id="btn-settings" title="Settings">&#9881;</button>
         <button id="btn-minimize" title="Minimize">&#x2212;</button>
-        <button id="btn-close" title="Close">&#x00D7;</button>
+        <button id="btn-close" title="Hide to tray">&#x00D7;</button>
       </div>
     </div>
   </div>
 
-  <!-- ── View: loading ────────────────────────────────────────────────── -->
   <div id="view-loading" class="view hidden">
-    <p class="status-text">Checking session&hellip;</p>
+    <p class="status-text">Checking session...</p>
   </div>
 
-  <!-- ── View: login ──────────────────────────────────────────────────── -->
   <div id="view-login" class="view hidden">
     <div class="login-card">
       <h2>Sign in to Claude</h2>
       <p class="hint">
-        Opens a browser window &mdash; log in normally and the app captures
+        Opens a browser window. Log in normally and the app captures
         your session automatically.
       </p>
       <button id="btn-auto-login" class="btn-primary">Auto-detect login</button>
       <div class="divider"><span>or</span></div>
       <label for="manual-key">Session key <span class="muted">(advanced)</span></label>
-      <input id="manual-key" type="password" placeholder="Paste sessionKey value&hellip;" autocomplete="off" />
+      <input id="manual-key" type="password" placeholder="Paste sessionKey value..." autocomplete="off" />
       <button id="btn-manual-login" class="btn-secondary">Use this key</button>
     </div>
   </div>
 
-  <!-- ── View: validating ─────────────────────────────────────────────── -->
   <div id="view-validating" class="view hidden">
-    <p class="status-text">Validating session&hellip;</p>
+    <p class="status-text">Validating session...</p>
   </div>
 
-  <!-- ── View: widget ─────────────────────────────────────────────────── -->
   <div id="view-widget" class="view hidden">
-    <div class="widget-body">
+    <div class="panel" id="usage-panel">
+      <div class="widget-body">
+        <div class="usage-row" id="row-session">
+          <div class="row-header">
+            <span class="row-label">Session</span>
+            <span class="row-pct" id="session-pct">-</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" id="session-bar" style="width:0%"></div>
+          </div>
+          <span class="row-reset" id="session-reset"></span>
+        </div>
 
-      <!-- Session -->
-      <div class="usage-row" id="row-session">
-        <div class="row-header">
-          <span class="row-label">Session</span>
-          <span class="row-pct" id="session-pct">—</span>
+        <div class="usage-row" id="row-weekly">
+          <div class="row-header">
+            <span class="row-label">Weekly</span>
+            <span class="row-pct" id="weekly-pct">-</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
+          </div>
+          <span class="row-reset" id="weekly-reset"></span>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill" id="session-bar" style="width:0%"></div>
+
+        <div class="usage-row" id="row-monthly">
+          <div class="row-header">
+            <span class="row-label">Monthly <span class="local-badge">local</span></span>
+            <span class="row-pct" id="monthly-val">-</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill local" id="monthly-bar" style="width:0%"></div>
+          </div>
+          <span class="row-reset" id="monthly-sub"></span>
         </div>
-        <span class="row-reset" id="session-reset"></span>
       </div>
 
-      <!-- Weekly -->
-      <div class="usage-row" id="row-weekly">
-        <div class="row-header">
-          <span class="row-label">Weekly</span>
-          <span class="row-pct" id="weekly-pct">—</span>
+      <div id="details-panel" class="details-panel hidden">
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span class="summary-label">All-time</span>
+            <span class="summary-value" id="alltime-val">-</span>
+            <span class="summary-meta" id="alltime-meta"></span>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Tracked since</span>
+            <span class="summary-value" id="tracked-since">-</span>
+            <span class="summary-meta" id="tracked-meta"></span>
+          </div>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
+
+        <div class="details-block" id="chart-block">
+          <div class="section-head">
+            <span>7-day history</span>
+            <span class="section-sub" id="chart-sub">local tokens</span>
+          </div>
+          <canvas id="history-chart" height="120"></canvas>
+          <p id="chart-empty" class="empty-state hidden">No local history yet.</p>
         </div>
-        <span class="row-reset" id="weekly-reset"></span>
+
+        <div class="details-block">
+          <div class="section-head">
+            <span>Models</span>
+            <span class="section-sub">local all-time totals</span>
+          </div>
+          <div id="model-list" class="model-list"></div>
+        </div>
       </div>
 
-      <!-- Monthly tokens (from stats-cache.json) -->
-      <div class="usage-row" id="row-monthly">
-        <div class="row-header">
-          <span class="row-label">Monthly <span class="local-badge">local</span></span>
-          <span class="row-pct" id="monthly-val">—</span>
+      <div class="widget-footer">
+        <span id="last-updated" class="footer-text"></span>
+        <button id="btn-logout" class="btn-ghost">logout</button>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="settings-panel">
+      <div class="settings-header">
+        <div>
+          <h2>Settings</h2>
+          <p class="hint">Changes save immediately.</p>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill local" id="monthly-bar" style="width:0%"></div>
-        </div>
-        <span class="row-reset" id="monthly-sub"></span>
+        <button id="btn-settings-back" class="btn-secondary btn-inline">Back</button>
       </div>
 
-    </div><!-- widget-body -->
+      <div class="settings-grid">
+        <label class="setting-field">
+          <span>Theme</span>
+          <select id="settings-theme">
+            <option value="system">System</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
 
-    <!-- Footer -->
-    <div class="widget-footer">
-      <span id="last-updated" class="footer-text"></span>
-      <button id="btn-logout" class="btn-ghost">logout</button>
+        <label class="setting-field">
+          <span>Refresh interval (min)</span>
+          <input id="settings-refresh" type="number" min="1" max="60" step="1" />
+        </label>
+
+        <label class="setting-field">
+          <span>Warning threshold (%)</span>
+          <input id="settings-warn" type="number" min="1" max="99" step="1" />
+        </label>
+
+        <label class="setting-field">
+          <span>Danger threshold (%)</span>
+          <input id="settings-danger" type="number" min="1" max="100" step="1" />
+        </label>
+
+        <label class="setting-toggle">
+          <input id="settings-always-on-top" type="checkbox" />
+          <span>Always on top</span>
+        </label>
+
+        <label class="setting-toggle">
+          <input id="settings-notifications" type="checkbox" />
+          <span>Desktop notifications</span>
+        </label>
+
+        <label class="setting-toggle">
+          <input id="settings-compact" type="checkbox" />
+          <span>Compact mode</span>
+        </label>
+
+        <label class="setting-toggle">
+          <input id="settings-show-graph" type="checkbox" />
+          <span>Show 7-day chart</span>
+        </label>
+
+        <label class="setting-toggle">
+          <input id="settings-launch" type="checkbox" />
+          <span>Launch at startup</span>
+        </label>
+      </div>
+
+      <div class="settings-footer">
+        <button id="btn-logout-settings" class="btn-ghost">logout</button>
+      </div>
     </div>
   </div>
 
+  <script src="vendor/chart.umd.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

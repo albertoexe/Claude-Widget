@@ -1,19 +1,22 @@
 {
   "name": "claude-widget",
   "version": "1.0.0",
-  "description": "Always-on-top Claude.ai usage widget — session %, weekly %, monthly tokens",
+  "description": "Always-on-top Claude.ai usage widget \u2014 session %, weekly %, monthly tokens",
   "main": "main.js",
   "author": "Alberto De Col",
   "license": "MIT",
   "scripts": {
     "dev": "electron .",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac"
+    "build:win": "electron-builder --win nsis --x64",
+    "build:mac": "electron-builder --mac dmg --x64 --arm64",
+    "build:mac:x64": "electron-builder --mac dmg --x64",
+    "build:mac:arm64": "electron-builder --mac dmg --arm64"
   },
   "dependencies": {
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
+    "chart.js": "^4.5.1",
     "cross-env": "^7.0.3",
     "electron": "^28.3.3",
     "electron-builder": "^24.9.1"
@@ -22,21 +25,44 @@
     "appId": "com.induvation.claude-widget",
     "productName": "Claude Widget",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "assets"
     },
     "files": [
+      "package.json",
       "main.js",
       "preload.js",
       "src/**/*",
       "assets/**/*"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.png"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
       "icon": "assets/icon.png"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }
