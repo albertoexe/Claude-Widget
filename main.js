@@ -151,30 +151,25 @@ async function fetchUsage (orgId) {
 
 /**
  * Normalise the claude.ai usage API response into a stable shape.
- * The exact field names are learned from the first live run (OQ4).
- * We try multiple paths so we degrade gracefully if the shape changes.
+ *
+ * Confirmed field names (2026-05-16):
+ *   five_hour    → session limit (5-hr rolling window), utilization 0–100
+ *   seven_day    → weekly limit,                        utilization 0–100
+ *   seven_day_omelette → per-model sub-limit (omelette codename), same shape
+ *
+ * Each non-null bucket: { utilization: number, resets_at: ISO string }
  */
 function parseApiUsage (raw) {
-  // Possible containers for session / weekly limits
-  const session = raw.session_message_limit ?? raw.session ?? null
-  const weekly  = raw.weekly_message_limit  ?? raw.weekly  ?? null
-
-  function toPct (obj) {
-    if (obj == null)                               return null
-    if (typeof obj === 'number')                   return obj            // already %
-    if (obj.percent    != null)                    return obj.percent
-    if (obj.used       != null && obj.total != null) return (obj.used / obj.total) * 100
-    if (obj.remaining  != null && obj.total != null)
-      return ((obj.total - obj.remaining) / obj.total) * 100
-    return null
-  }
+  const session  = raw.five_hour          ?? null
+  const weekly   = raw.seven_day          ?? null
+  const modelSub = raw.seven_day_omelette ?? null   // exposed in M3
 
   return {
-    sessionPct:      toPct(session),
-    weeklyPct:       toPct(weekly),
-    sessionResetsAt: session?.resets_at ?? null,
-    weeklyResetsAt:  weekly?.resets_at  ?? null,
-    _raw:            raw   // keep for debugging until we confirm the shape
+    sessionPct:      session?.utilization  ?? null,
+    weeklyPct:       weekly?.utilization   ?? null,
+    modelSubPct:     modelSub?.utilization ?? null,   // future use
+    sessionResetsAt: session?.resets_at    ?? null,
+    weeklyResetsAt:  weekly?.resets_at     ?? null
   }
 }
 
@@ -208,11 +203,6 @@ async function doRefresh () {
     if (rawApi?.type === 'error') {
       throw new Error(`API error: ${rawApi.error?.message ?? JSON.stringify(rawApi.error)}`)
     }
-
-    // ── TEMP DEBUG — remove once usage field names confirmed ──────────────
-    console.log('[data] raw API keys:', Object.keys(rawApi))
-    console.log('[data] raw API:', JSON.stringify(rawApi, null, 2))
-    // ─────────────────────────────────────────────────────────────────────
 
     const api = parseApiUsage(rawApi)
     console.log('[data] Session:', api.sessionPct?.toFixed(1), '%  Weekly:', api.weeklyPct?.toFixed(1), '%')
