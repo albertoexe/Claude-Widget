@@ -8,6 +8,12 @@
  * launch-at-startup (Windows), dynamic window height.
  */
 
+// Suppress EPIPE errors on stdout/stderr (happens when Electron is launched
+// from a terminal that closes — subsequent console.log calls would otherwise
+// throw an uncaught exception and show the Electron error modal).
+process.stdout.on('error', (err) => { if (err.code !== 'EPIPE') throw err })
+process.stderr.on('error', (err) => { if (err.code !== 'EPIPE') throw err })
+
 const {
   app, BrowserWindow, ipcMain, safeStorage,
   Tray, Menu, Notification, nativeImage
