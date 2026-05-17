@@ -27,10 +27,10 @@ const STATS_PATH          = path.join(os.homedir(), '.claude', 'stats-cache.json
 
 // Named window sizes
 const WIN = {
-  login:    { width: 420, height: 380 },
-  widget:   { width: 560, height: 230 },
-  compact:  { width: 560, height: 90  },
-  settings: { width: 560, height: 480 }
+  login:    { width: 460, height: 420 },
+  widget:   { width: 680, height: 460 },
+  compact:  { width: 560, height: 140 },
+  settings: { width: 720, height: 560 }
 }
 
 const ALLOWED_LOGIN_HOSTS = [
@@ -64,6 +64,9 @@ let tray              = null
 let refreshTimer      = null
 let lastNotified      = {}   // { session: 'warn'|'danger'|'ok', weekly: same }
 let settingsPanelOpen = false
+let resizeSession     = null
+let viewMinimum       = { ...WIN.login }
+let currentMinimum    = { ...WIN.login }
 
 // ── Credential helpers ────────────────────────────────────────────────────────
 
@@ -441,10 +444,28 @@ function syncLoginItem () {
 
 // ── Window resize helpers ─────────────────────────────────────────────────────
 
+function applyMinimumSize (width, height, options = {}) {
+  if (options.updateViewMinimum) viewMinimum = { width, height }
+  currentMinimum = { width, height }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setMinimumSize(width, height)
+  }
+}
+
 function resizeMainWindow (viewName) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const dim = WIN[viewName]
-  if (dim) mainWindow.setSize(dim.width, dim.height, true)
+  if (!dim) return
+
+  applyMinimumSize(dim.width, dim.height, { updateViewMinimum: true })
+
+  const [currentWidth, currentHeight] = mainWindow.getSize()
+  const nextWidth = Math.max(currentWidth, dim.width)
+  const nextHeight = Math.max(currentHeight, dim.height)
+
+  if (nextWidth !== currentWidth || nextHeight !== currentHeight) {
+    mainWindow.setSize(nextWidth, nextHeight, true)
+  }
 }
 
 function currentWidgetSize () {
@@ -512,15 +533,21 @@ async function validateExistingSession () {
 
 function createMainWindow () {
   const bounds = store.get('windowBounds')
+  const initialWidth = Math.max(bounds.width ?? WIN.login.width, WIN.login.width)
+  const initialHeight = Math.max(bounds.height ?? WIN.login.height, WIN.login.height)
+
   mainWindow = new BrowserWindow({
-    width:       bounds.width,
-    height:      bounds.height,
+    width:       initialWidth,
+    height:      initialHeight,
+    minWidth:    WIN.login.width,
+    minHeight:   WIN.login.height,
     x:           bounds.x ?? undefined,
     y:           bounds.y ?? undefined,
     frame:       false,
     transparent: false,
+    backgroundColor: '#0f1220',
     alwaysOnTop: store.get('alwaysOnTop'),
-    resizable:   false,
+    resizable:   true,
     skipTaskbar: true,
     webPreferences: {
       nodeIntegration:  false,
@@ -530,8 +557,10 @@ function createMainWindow () {
     }
   })
   mainWindow.loadFile(path.join(__dirname, 'src', 'renderer', 'index.html'))
+  applyMinimumSize(WIN.login.width, WIN.login.height, { updateViewMinimum: true })
   mainWindow.on('moved',  () => { if (mainWindow && !mainWindow.isDestroyed()) store.set('windowBounds', mainWindow.getBounds()) })
-  mainWindow.on('closed', () => { stopRefreshLoop(); settingsPanelOpen = false; mainWindow = null })
+  mainWindow.on('resize', () => { if (mainWindow && !mainWindow.isDestroyed()) store.set('windowBounds', mainWindow.getBounds()) })
+  mainWindow.on('closed', () => { stopRefreshLoop(); settingsPanelOpen = false; resizeSession = null; mainWindow = null })
 }
 
 function openLoginWindow () {
@@ -584,8 +613,49 @@ function registerIPC () {
   ipcMain.on('window:alwaysOnTop', (_e, f) => { mainWindow?.setAlwaysOnTop(Boolean(f)); store.set('alwaysOnTop', Boolean(f)); updateTrayMenu() })
   ipcMain.on('window:setHeight',   (_e, h) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-    const [w] = mainWindow.getSize()
-    mainWindow.setSize(w, Math.max(90, Math.min(600, h)), true)
+
+    const targetHeight = Math.max(viewMinimum.height, Math.min(1600, Math.round(h)))
+    applyMinimumSize(viewMinimum.width, targetHeight)
+
+    const [currentWidth, currentHeight] = mainWindow.getSize()
+    if (currentHeight < targetHeight) {
+      mainWindow.setSize(currentWidth, targetHeight, true)
+    }
+  })
+
+  ipcMain.on('window:resize-start', (_e, payload) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    resizeSession = {
+      startX: Number(payload?.screenX) || 0,
+      startY: Number(payload?.screenY) || 0,
+      bounds: mainWindow.getBounds()
+    }
+  })
+
+  ipcMain.on('window:resize-move', (_e, payload) => {
+    if (!mainWindow || mainWindow.isDestroyed() || !resizeSession) return
+
+    const screenX = Number(payload?.screenX) || resizeSession.startX
+    const screenY = Number(payload?.screenY) || resizeSession.startY
+    const deltaX = screenX - resizeSession.startX
+    const deltaY = screenY - resizeSession.startY
+
+    const width = Math.max(currentMinimum.width, resizeSession.bounds.width + deltaX)
+    const height = Math.max(currentMinimum.height, resizeSession.bounds.height + deltaY)
+
+    mainWindow.setBounds({
+      x: resizeSession.bounds.x,
+      y: resizeSession.bounds.y,
+      width: Math.round(width),
+      height: Math.round(height)
+    })
+  })
+
+  ipcMain.on('window:resize-end', () => {
+    resizeSession = null
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      store.set('windowBounds', mainWindow.getBounds())
+    }
   })
 
   // Compact mode

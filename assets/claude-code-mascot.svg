@@ -1,0 +1,40 @@
+﻿<svg width="360" height="360" viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="40" x2="292" y2="316" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDBA74"/>
+      <stop offset="0.5" stop-color="#FB7185"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="112" y1="124" x2="248" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="body" x1="106" y1="150" x2="254" y2="276" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7ED"/>
+      <stop offset="1" stop-color="#FDE68A"/>
+    </linearGradient>
+    <filter id="shadow" x="58" y="56" width="244" height="248" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0F172A" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <circle cx="180" cy="180" r="164" fill="url(#bg)"/>
+  <circle cx="118" cy="92" r="28" fill="#FDE68A" fill-opacity="0.32"/>
+  <circle cx="258" cy="86" r="20" fill="#FFF7ED" fill-opacity="0.24"/>
+  <circle cx="284" cy="260" r="30" fill="#312E81" fill-opacity="0.12"/>
+
+  <g filter="url(#shadow)">
+    <path d="M180 86C219.765 86 252 118.235 252 158V210C252 244.242 224.242 272 190 272H170C135.758 272 108 244.242 108 210V158C108 118.235 140.235 86 180 86Z" fill="url(#body)"/>
+    <path d="M180 98C213.137 98 240 124.863 240 158V182H120V158C120 124.863 146.863 98 180 98Z" fill="url(#visor)"/>
+    <path d="M180 98C213.137 98 240 124.863 240 158V182H120V158C120 124.863 146.863 98 180 98Z" fill="url(#visor)"/>
+    <path d="M160 208C164.418 208 168 204.418 168 200C168 195.582 164.418 192 160 192C155.582 192 152 195.582 152 200C152 204.418 155.582 208 160 208Z" fill="#111827"/>
+    <path d="M200 208C204.418 208 208 204.418 208 200C208 195.582 204.418 192 200 192C195.582 192 192 195.582 192 200C192 204.418 195.582 208 200 208Z" fill="#111827"/>
+    <path d="M156 230C163.56 238.146 173.383 242.219 180 242.219C186.617 242.219 196.44 238.146 204 230" stroke="#111827" stroke-width="8" stroke-linecap="round"/>
+    <path d="M146 140L128 158L146 176" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M214 140L232 158L214 176" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="148" y="252" width="64" height="12" rx="6" fill="#F59E0B" fill-opacity="0.8"/>
+  </g>
+
+  <path d="M106 122C99.3726 122 94 116.627 94 110C94 103.373 99.3726 98 106 98" stroke="#312E81" stroke-width="8" stroke-linecap="round"/>
+  <path d="M254 122C260.627 122 266 116.627 266 110C266 103.373 260.627 98 254 98" stroke="#312E81" stroke-width="8" stroke-linecap="round"/>
+</svg>

@@ -1,16 +1,23 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Claude Widget</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="titlebar">
-    <span id="app-title">Claude Widget</span>
+    <div class="titlebar-brand">
+      <img src="../../assets/icon.png" alt="Claude Widget logo" class="titlebar-logo" />
+      <div class="titlebar-copy">
+        <span class="titlebar-kicker">Claude Code</span>
+        <span id="app-title">Claude Widget</span>
+      </div>
+    </div>
+
     <div id="titlebar-right">
       <span id="org-name" class="org-badge"></span>
       <div id="window-controls">
@@ -25,110 +32,217 @@
   </div>
 
   <div id="view-loading" class="view hidden">
-    <p class="status-text">Checking session...</p>
+    <div class="status-shell">
+      <div class="status-orb"></div>
+      <p class="status-text">Checking session...</p>
+    </div>
   </div>
 
   <div id="view-login" class="view hidden">
-    <div class="login-card">
-      <h2>Sign in to Claude</h2>
-      <p class="hint">
-        Opens a browser window. Log in normally and the app captures
-        your session automatically.
-      </p>
-      <button id="btn-auto-login" class="btn-primary">Auto-detect login</button>
-      <div class="divider"><span>or</span></div>
-      <label for="manual-key">Session key <span class="muted">(advanced)</span></label>
-      <input id="manual-key" type="password" placeholder="Paste sessionKey value..." autocomplete="off" />
-      <button id="btn-manual-login" class="btn-secondary">Use this key</button>
+    <div class="login-shell">
+      <div class="login-copy">
+        <span class="eyebrow">Ambient usage monitor</span>
+        <h1>Keep Claude usage visible while you work.</h1>
+        <p class="hint">
+          Sign in once. After that the widget stays parked on your desktop and watches session, weekly, and local token usage.
+        </p>
+        <div class="login-actions">
+          <button id="btn-auto-login" class="btn-primary">Auto-detect login</button>
+          <button id="btn-manual-login" class="btn-secondary">Use session key</button>
+        </div>
+        <div class="manual-login-row">
+          <label for="manual-key">Session key <span class="muted">(advanced)</span></label>
+          <input id="manual-key" type="password" placeholder="Paste sessionKey value..." autocomplete="off" />
+        </div>
+      </div>
+      <div class="login-visual">
+        <div class="login-glow"></div>
+        <img src="../../assets/claude-code-mascot.svg" alt="Claude Code mascot" class="login-mascot" />
+      </div>
     </div>
   </div>
 
   <div id="view-validating" class="view hidden">
-    <p class="status-text">Validating session...</p>
+    <div class="status-shell">
+      <div class="status-orb pulse"></div>
+      <p class="status-text">Validating session...</p>
+    </div>
   </div>
 
   <div id="view-widget" class="view hidden">
-    <div class="panel" id="usage-panel">
-      <div class="widget-body">
-        <div class="usage-row" id="row-session">
-          <div class="row-header">
-            <span class="row-label">Session</span>
-            <span class="row-pct" id="session-pct">-</span>
+    <div class="panel panel-usage" id="usage-panel">
+      <section class="hero-band">
+        <div class="hero-copy">
+          <span class="eyebrow">Claude Code companion</span>
+          <h1>Stay inside the limit without opening the terminal.</h1>
+          <p class="hero-text">Live Claude.ai utilization on top, local Claude Code token context underneath.</p>
+          <div class="hero-meta">
+            <span class="meta-pill" id="hero-org">No org selected</span>
+            <span class="meta-pill" id="hero-updated">Waiting for data</span>
+            <span class="meta-pill accent" id="mascot-status">Stand by</span>
           </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-bloom"></div>
+          <img src="../../assets/claude-code-mascot.svg" alt="Claude Code mascot" class="mascot-art" />
+        </div>
+      </section>
+
+      <section class="fact-strip">
+        <div class="fact-item">
+          <span class="fact-label">Today</span>
+          <strong class="fact-value" id="fact-today">-</strong>
+        </div>
+        <div class="fact-item">
+          <span class="fact-label">7d tokens</span>
+          <strong class="fact-value" id="fact-week">-</strong>
+        </div>
+        <div class="fact-item">
+          <span class="fact-label">All time</span>
+          <strong class="fact-value" id="fact-alltime">-</strong>
+        </div>
+      </section>
+
+      <section class="usage-grid">
+        <article class="usage-row" id="row-session">
+          <div class="usage-top">
+            <div>
+              <span class="row-label">Session</span>
+              <span class="row-subtitle">Claude.ai current window</span>
+            </div>
+            <span class="usage-chip" id="session-status">Pending</span>
+          </div>
+
+          <div class="usage-core">
+            <div class="usage-reading">
+              <span class="row-pct" id="session-pct">-</span>
+              <span class="row-reset" id="session-reset"></span>
+            </div>
+            <div class="usage-ring-wrap">
+              <svg class="usage-ring" viewBox="0 0 42 42" aria-hidden="true">
+                <circle class="usage-ring-track" cx="21" cy="21" r="18" pathLength="100"></circle>
+                <circle class="usage-ring-progress" id="session-ring" cx="21" cy="21" r="18" pathLength="100"></circle>
+              </svg>
+              <span class="usage-ring-label" id="session-ring-label">--</span>
+            </div>
+          </div>
+
           <div class="bar-track">
             <div class="bar-fill" id="session-bar" style="width:0%"></div>
           </div>
-          <span class="row-reset" id="session-reset"></span>
-        </div>
+        </article>
 
-        <div class="usage-row" id="row-weekly">
-          <div class="row-header">
-            <span class="row-label">Weekly</span>
-            <span class="row-pct" id="weekly-pct">-</span>
+        <article class="usage-row weekly" id="row-weekly">
+          <div class="usage-top">
+            <div>
+              <span class="row-label">Weekly</span>
+              <span class="row-subtitle">Claude.ai 7-day utilization</span>
+            </div>
+            <span class="usage-chip" id="weekly-status">Pending</span>
           </div>
+
+          <div class="usage-core">
+            <div class="usage-reading">
+              <span class="row-pct" id="weekly-pct">-</span>
+              <span class="row-reset" id="weekly-reset"></span>
+            </div>
+            <div class="usage-ring-wrap">
+              <svg class="usage-ring" viewBox="0 0 42 42" aria-hidden="true">
+                <circle class="usage-ring-track" cx="21" cy="21" r="18" pathLength="100"></circle>
+                <circle class="usage-ring-progress weekly" id="weekly-ring" cx="21" cy="21" r="18" pathLength="100"></circle>
+              </svg>
+              <span class="usage-ring-label" id="weekly-ring-label">--</span>
+            </div>
+          </div>
+
           <div class="bar-track">
-            <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
+            <div class="bar-fill weekly" id="weekly-bar" style="width:0%"></div>
           </div>
-          <span class="row-reset" id="weekly-reset"></span>
-        </div>
+        </article>
 
-        <div class="usage-row" id="row-monthly">
-          <div class="row-header">
-            <span class="row-label">Monthly <span class="local-badge">local</span></span>
-            <span class="row-pct" id="monthly-val">-</span>
+        <article class="usage-row monthly" id="row-monthly">
+          <div class="usage-top">
+            <div>
+              <span class="row-label">Monthly <span class="local-badge">local</span></span>
+              <span class="row-subtitle">Rolling 30-day Claude Code tokens</span>
+            </div>
+            <span class="usage-chip local" id="monthly-status">Local</span>
           </div>
+
+          <div class="usage-core">
+            <div class="usage-reading">
+              <span class="row-pct" id="monthly-val">-</span>
+              <span class="row-reset" id="monthly-sub"></span>
+            </div>
+            <div class="usage-ring-wrap">
+              <svg class="usage-ring" viewBox="0 0 42 42" aria-hidden="true">
+                <circle class="usage-ring-track" cx="21" cy="21" r="18" pathLength="100"></circle>
+                <circle class="usage-ring-progress local" id="monthly-ring" cx="21" cy="21" r="18" pathLength="100"></circle>
+              </svg>
+              <span class="usage-ring-label" id="monthly-ring-label">30d</span>
+            </div>
+          </div>
+
           <div class="bar-track">
             <div class="bar-fill local" id="monthly-bar" style="width:0%"></div>
           </div>
-          <span class="row-reset" id="monthly-sub"></span>
-        </div>
-      </div>
+        </article>
+      </section>
 
-      <div id="details-panel" class="details-panel hidden">
+      <section id="details-panel" class="details-panel hidden">
         <div class="summary-grid">
           <div class="summary-card">
-            <span class="summary-label">All-time</span>
-            <span class="summary-value" id="alltime-val">-</span>
+            <span class="summary-label">All time</span>
+            <strong class="summary-value" id="alltime-val">-</strong>
             <span class="summary-meta" id="alltime-meta"></span>
           </div>
           <div class="summary-card">
             <span class="summary-label">Tracked since</span>
-            <span class="summary-value" id="tracked-since">-</span>
+            <strong class="summary-value" id="tracked-since">-</strong>
             <span class="summary-meta" id="tracked-meta"></span>
           </div>
-        </div>
-
-        <div class="details-block" id="chart-block">
-          <div class="section-head">
-            <span>7-day history</span>
-            <span class="section-sub" id="chart-sub">local tokens</span>
+          <div class="summary-card">
+            <span class="summary-label">Top model</span>
+            <strong class="summary-value" id="top-model">-</strong>
+            <span class="summary-meta" id="top-model-meta"></span>
           </div>
-          <canvas id="history-chart" height="120"></canvas>
-          <p id="chart-empty" class="empty-state hidden">No local history yet.</p>
         </div>
 
-        <div class="details-block">
-          <div class="section-head">
-            <span>Models</span>
-            <span class="section-sub">local all-time totals</span>
+        <div class="detail-columns">
+          <div class="details-block" id="chart-block">
+            <div class="section-head">
+              <span>7-day history</span>
+              <span class="section-sub">local tokens</span>
+            </div>
+            <canvas id="history-chart" height="190"></canvas>
+            <p id="chart-empty" class="empty-state hidden">No local history yet.</p>
           </div>
-          <div id="model-list" class="model-list"></div>
-        </div>
-      </div>
 
-      <div class="widget-footer">
+          <div class="details-block">
+            <div class="section-head">
+              <span>Models</span>
+              <span class="section-sub">all-time local totals</span>
+            </div>
+            <div id="model-list" class="model-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="widget-footer">
         <span id="last-updated" class="footer-text"></span>
         <button id="btn-logout" class="btn-ghost">logout</button>
-      </div>
+      </footer>
     </div>
 
-    <div class="panel hidden" id="settings-panel">
+    <div class="panel panel-settings hidden" id="settings-panel">
       <div class="settings-header">
         <div>
+          <span class="eyebrow">Controls</span>
           <h2>Settings</h2>
-          <p class="hint">Changes save immediately.</p>
+          <p class="hint">Tuned for desktop use. Changes save immediately.</p>
         </div>
-        <button id="btn-settings-back" class="btn-secondary btn-inline">Back</button>
+        <button id="btn-settings-back" class="btn-secondary btn-inline">Done</button>
       </div>
 
       <div class="settings-grid">
@@ -176,10 +290,14 @@
           <span>Show 7-day chart</span>
         </label>
 
-        <label class="setting-toggle">
+        <label class="setting-toggle stretch-toggle">
           <input id="settings-launch" type="checkbox" />
           <span>Launch at startup</span>
         </label>
+      </div>
+
+      <div class="settings-note">
+        Tip: drag the bottom-right corner to stretch the widget. The layout will reflow instead of snapping back.
       </div>
 
       <div class="settings-footer">
@@ -187,6 +305,10 @@
       </div>
     </div>
   </div>
+
+  <button id="resize-grip" title="Resize window" aria-label="Resize window">
+    <span></span><span></span><span></span>
+  </button>
 
   <script src="vendor/chart.umd.js"></script>
   <script src="app.js"></script>

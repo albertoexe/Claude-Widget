@@ -2,8 +2,6 @@
 
 /**
  * preload.js - IPC bridge between main process and renderer.
- * contextIsolation: true, so we use contextBridge.
- * Only expose what the renderer actually needs.
  */
 
 const { contextBridge, ipcRenderer } = require('electron')
@@ -23,6 +21,9 @@ contextBridge.exposeInMainWorld('api', {
   close: () => ipcRenderer.send('window:close'),
   setAlwaysOnTop: (flag) => ipcRenderer.send('window:alwaysOnTop', flag),
   setWindowHeight: (height) => ipcRenderer.send('window:setHeight', height),
+  startWindowResize: (payload) => ipcRenderer.send('window:resize-start', payload),
+  resizeWindow: (payload) => ipcRenderer.send('window:resize-move', payload),
+  endWindowResize: () => ipcRenderer.send('window:resize-end'),
 
   // Settings
   getSettings: () => ipcRenderer.send('settings:get'),
