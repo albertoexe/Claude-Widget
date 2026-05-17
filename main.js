@@ -33,10 +33,10 @@ const STATS_PATH          = path.join(os.homedir(), '.claude', 'stats-cache.json
 
 // Named window sizes
 const WIN = {
-  login:    { width: 460, height: 420 },
-  widget:   { width: 680, height: 460 },
-  compact:  { width: 560, height: 140 },
-  settings: { width: 720, height: 560 }
+  login:    { width: 380, height: 280 },
+  widget:   { width: 380, height: 280 },
+  compact:  { width: 380, height: 88  },
+  settings: { width: 380, height: 460 }
 }
 
 const ALLOWED_LOGIN_HOSTS = [
@@ -619,10 +619,10 @@ function registerIPC () {
   ipcMain.on('window:alwaysOnTop', (_e, f) => { mainWindow?.setAlwaysOnTop(Boolean(f)); store.set('alwaysOnTop', Boolean(f)); updateTrayMenu() })
   ipcMain.on('window:setHeight',   (_e, h) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-
+    // Only grow — never shrink and never update the minimum size here.
+    // Updating the minimum to content height would prevent the user from
+    // manually resizing the window smaller via the resize grip.
     const targetHeight = Math.max(viewMinimum.height, Math.min(1600, Math.round(h)))
-    applyMinimumSize(viewMinimum.width, targetHeight)
-
     const [currentWidth, currentHeight] = mainWindow.getSize()
     if (currentHeight < targetHeight) {
       mainWindow.setSize(currentWidth, targetHeight, true)

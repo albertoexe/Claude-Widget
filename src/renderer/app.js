@@ -114,8 +114,10 @@ const systemThemeQuery = typeof window.matchMedia === 'function'
 let countdownHandle = null
 let heightFrame = null
 let gripDragging = false
+let userResized = false   // set true after manual resize; clears on view change
 
 function showView(name) {
+  userResized = false      // new view → let auto-height-sync take over again
   state.currentView = name
   document.body.dataset.view = name
   VIEWS.forEach((key) => view[key]?.classList.add('hidden'))
@@ -629,6 +631,7 @@ function syncUiFromSettings() {
 }
 
 function scheduleHeightSync() {
+  if (gripDragging || userResized) return  // don't fight a manual resize
   if (heightFrame) cancelAnimationFrame(heightFrame)
 
   heightFrame = requestAnimationFrame(() => {
@@ -699,6 +702,7 @@ function bindResizeGrip() {
   const stopResize = () => {
     if (!gripDragging) return
     gripDragging = false
+    userResized = true      // remember user took control; pause auto-height-sync
     document.body.classList.remove('is-resizing')
     window.api.endWindowResize()
     window.removeEventListener('mousemove', handleMove)
