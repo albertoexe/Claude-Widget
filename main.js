@@ -35,7 +35,7 @@ const STATS_PATH          = path.join(os.homedir(), '.claude', 'stats-cache.json
 const WIN = {
   login:    { width: 380, height: 280 },
   widget:   { width: 380, height: 280 },
-  compact:  { width: 380, height: 88  },
+  compact:  { width: 340, height: 88  },
   settings: { width: 380, height: 460 }
 }
 
@@ -73,6 +73,7 @@ let settingsPanelOpen = false
 let resizeSession     = null
 let viewMinimum       = { ...WIN.login }
 let currentMinimum    = { ...WIN.login }
+let lastExpandedBounds = null
 
 // ── Credential helpers ────────────────────────────────────────────────────────
 
@@ -349,6 +350,7 @@ function openSettingsPanel () {
     return
   }
 
+  captureExpandedBounds()
   settingsPanelOpen = true
   showMainWindow()
   resizeMainWindow('settings')
@@ -358,7 +360,7 @@ function openSettingsPanel () {
 function closeSettingsPanel () {
   settingsPanelOpen = false
   if (!mainWindow || mainWindow.isDestroyed()) return
-  resizeMainWindow(currentWidgetSize())
+  applyWidgetModeWindowSize(store.get('compactMode'))
 }
 
 function setupTray () {
@@ -458,24 +460,50 @@ function applyMinimumSize (width, height, options = {}) {
   }
 }
 
-function resizeMainWindow (viewName) {
+function captureExpandedBounds () {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (store.get('compactMode')) return
+  lastExpandedBounds = mainWindow.getBounds()
+}
+
+function restoreExpandedBounds () {
+  if (!mainWindow || mainWindow.isDestroyed() || !lastExpandedBounds) return false
+
+  applyMinimumSize(WIN.widget.width, WIN.widget.height, { updateViewMinimum: true })
+
+  const width = Math.max(WIN.widget.width, lastExpandedBounds.width || WIN.widget.width)
+  const height = Math.max(WIN.widget.height, lastExpandedBounds.height || WIN.widget.height)
+  mainWindow.setSize(width, height, true)
+  return true
+}
+
+function resizeMainWindow (viewName, options = {}) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const dim = WIN[viewName]
   if (!dim) return
+  const { forceExact = false } = options
 
   applyMinimumSize(dim.width, dim.height, { updateViewMinimum: true })
 
   const [currentWidth, currentHeight] = mainWindow.getSize()
-  const nextWidth = Math.max(currentWidth, dim.width)
-  const nextHeight = Math.max(currentHeight, dim.height)
+  const nextWidth = forceExact ? dim.width : Math.max(currentWidth, dim.width)
+  const nextHeight = forceExact ? dim.height : Math.max(currentHeight, dim.height)
 
   if (nextWidth !== currentWidth || nextHeight !== currentHeight) {
     mainWindow.setSize(nextWidth, nextHeight, true)
   }
 }
 
-function currentWidgetSize () {
-  return store.get('compactMode') ? 'compact' : 'widget'
+function applyWidgetModeWindowSize (compactMode) {
+  if (compactMode) {
+    captureExpandedBounds()
+    resizeMainWindow('compact', { forceExact: true })
+    return
+  }
+
+  if (!restoreExpandedBounds()) {
+    resizeMainWindow('widget', { forceExact: true })
+  }
 }
 
 // ── Auth flow ─────────────────────────────────────────────────────────────────
@@ -493,7 +521,8 @@ async function onSessionCaptured (sessionKey) {
     const org = pickOrg(orgs)
     store.set('selectedOrgId', org._uuid)
     console.log(`[auth] Org resolved: ${org.name} (uuid: ${org._uuid})`)
-    resizeMainWindow(currentWidgetSize())
+    if (store.get('compactMode')) resizeMainWindow('compact', { forceExact: true })
+    else resizeMainWindow('widget')
     mainWindow?.webContents.send('auth:success', { orgId: org._uuid, orgName: org.name })
     startRefreshLoop()
     updateTrayMenu()
@@ -521,7 +550,8 @@ async function validateExistingSession () {
     const org = pickOrg(orgs)
     store.set('selectedOrgId', org._uuid)
     console.log(`[auth] Org re-validated: ${org.name} (uuid: ${org._uuid})`)
-    resizeMainWindow(currentWidgetSize())
+    if (store.get('compactMode')) resizeMainWindow('compact', { forceExact: true })
+    else resizeMainWindow('widget')
     mainWindow?.webContents.send('auth:success', { orgId: org._uuid, orgName: org.name })
     startRefreshLoop()
     updateTrayMenu()
@@ -668,7 +698,7 @@ function registerIPC () {
   ipcMain.on('compact:toggle', () => {
     const next = !store.get('compactMode')
     store.set('compactMode', next)
-    if (!settingsPanelOpen) resizeMainWindow(next ? 'compact' : 'widget')
+    if (!settingsPanelOpen) applyWidgetModeWindowSize(next)
     mainWindow?.webContents.send('compact:change', next)
   })
 
@@ -691,7 +721,7 @@ function registerIPC () {
     }
     if ('compactMode' in p) {
       const next = Boolean(p.compactMode)
-      if (!settingsPanelOpen) resizeMainWindow(next ? 'compact' : 'widget')
+      if (!settingsPanelOpen) applyWidgetModeWindowSize(next)
       mainWindow?.webContents.send('compact:change', next)
     }
     if ('notifications' in p && !p.notifications) lastNotified = {}

@@ -1,85 +1,69 @@
 'use strict'
 
+const byId = (id) => document.getElementById(id)
+
 const VIEWS = ['loading', 'login', 'validating', 'widget']
 const view = Object.fromEntries(
-  VIEWS.map((name) => [name, document.getElementById(`view-${name}`)])
+  VIEWS.map((name) => [name, byId(`view-${name}`)])
 )
 
 const dom = {
-  titlebar: document.getElementById('titlebar'),
-  viewWidget: document.getElementById('view-widget'),
-  usagePanel: document.getElementById('usage-panel'),
-  settingsPanel: document.getElementById('settings-panel'),
-  detailsPanel: document.getElementById('details-panel'),
-  chartBlock: document.getElementById('chart-block'),
-  chartCanvas: document.getElementById('history-chart'),
-  chartEmpty: document.getElementById('chart-empty'),
-  modelList: document.getElementById('model-list'),
-  orgName: document.getElementById('org-name'),
-  heroOrg: document.getElementById('hero-org'),
-  heroUpdated: document.getElementById('hero-updated'),
-  mascotStatus: document.getElementById('mascot-status'),
-  factToday: document.getElementById('fact-today'),
-  factWeek: document.getElementById('fact-week'),
-  factAlltime: document.getElementById('fact-alltime'),
-  alltimeVal: document.getElementById('alltime-val'),
-  alltimeMeta: document.getElementById('alltime-meta'),
-  trackedSince: document.getElementById('tracked-since'),
-  trackedMeta: document.getElementById('tracked-meta'),
-  topModel: document.getElementById('top-model'),
-  topModelMeta: document.getElementById('top-model-meta'),
-  lastUpdated: document.getElementById('last-updated'),
-  btnRefresh: document.getElementById('btn-refresh'),
-  btnDetails: document.getElementById('btn-details'),
-  btnCompact: document.getElementById('btn-compact'),
-  btnSettings: document.getElementById('btn-settings'),
-  btnMinimize: document.getElementById('btn-minimize'),
-  btnClose: document.getElementById('btn-close'),
-  btnAutoLogin: document.getElementById('btn-auto-login'),
-  btnManualLogin: document.getElementById('btn-manual-login'),
-  btnLogout: document.getElementById('btn-logout'),
-  btnLogoutSettings: document.getElementById('btn-logout-settings'),
-  btnSettingsBack: document.getElementById('btn-settings-back'),
-  manualKey: document.getElementById('manual-key'),
-  settingsTheme: document.getElementById('settings-theme'),
-  settingsRefresh: document.getElementById('settings-refresh'),
-  settingsWarn: document.getElementById('settings-warn'),
-  settingsDanger: document.getElementById('settings-danger'),
-  settingsAlwaysOnTop: document.getElementById('settings-always-on-top'),
-  settingsNotifications: document.getElementById('settings-notifications'),
-  settingsCompact: document.getElementById('settings-compact'),
-  settingsShowGraph: document.getElementById('settings-show-graph'),
-  settingsLaunch: document.getElementById('settings-launch'),
-  resizeGrip: document.getElementById('resize-grip')
+  titlebar: byId('titlebar'),
+  usagePanel: byId('usage-panel'),
+  settingsPanel: byId('settings-panel'),
+  detailsPanel: byId('details-panel'),
+  chartBlock: byId('chart-block'),
+  chartCanvas: byId('history-chart'),
+  chartEmpty: byId('chart-empty'),
+  chartSub: byId('chart-sub'),
+  modelList: byId('model-list'),
+  orgName: byId('org-name'),
+  alltimeVal: byId('alltime-val'),
+  alltimeMeta: byId('alltime-meta'),
+  trackedSince: byId('tracked-since'),
+  trackedMeta: byId('tracked-meta'),
+  lastUpdated: byId('last-updated'),
+  btnRefresh: byId('btn-refresh'),
+  btnDetails: byId('btn-details'),
+  btnCompact: byId('btn-compact'),
+  btnSettings: byId('btn-settings'),
+  btnMinimize: byId('btn-minimize'),
+  btnClose: byId('btn-close'),
+  btnAutoLogin: byId('btn-auto-login'),
+  btnManualLogin: byId('btn-manual-login'),
+  btnLogout: byId('btn-logout'),
+  btnLogoutSettings: byId('btn-logout-settings'),
+  btnSettingsBack: byId('btn-settings-back'),
+  manualKey: byId('manual-key'),
+  settingsTheme: byId('settings-theme'),
+  settingsRefresh: byId('settings-refresh'),
+  settingsWarn: byId('settings-warn'),
+  settingsDanger: byId('settings-danger'),
+  settingsAlwaysOnTop: byId('settings-always-on-top'),
+  settingsNotifications: byId('settings-notifications'),
+  settingsCompact: byId('settings-compact'),
+  settingsShowGraph: byId('settings-show-graph'),
+  settingsLaunch: byId('settings-launch')
 }
 
 const metricDom = {
   session: {
-    row: document.getElementById('row-session'),
-    status: document.getElementById('session-status'),
-    pct: document.getElementById('session-pct'),
-    reset: document.getElementById('session-reset'),
-    bar: document.getElementById('session-bar'),
-    ring: document.getElementById('session-ring'),
-    ringLabel: document.getElementById('session-ring-label')
+    row: byId('row-session'),
+    pct: byId('session-pct'),
+    reset: byId('session-reset'),
+    bar: byId('session-bar')
   },
   weekly: {
-    row: document.getElementById('row-weekly'),
-    status: document.getElementById('weekly-status'),
-    pct: document.getElementById('weekly-pct'),
-    reset: document.getElementById('weekly-reset'),
-    bar: document.getElementById('weekly-bar'),
-    ring: document.getElementById('weekly-ring'),
-    ringLabel: document.getElementById('weekly-ring-label')
+    row: byId('row-weekly'),
+    pct: byId('weekly-pct'),
+    reset: byId('weekly-reset'),
+    bar: byId('weekly-bar')
   },
   monthly: {
-    row: document.getElementById('row-monthly'),
-    status: document.getElementById('monthly-status'),
-    pct: document.getElementById('monthly-val'),
-    reset: document.getElementById('monthly-sub'),
-    bar: document.getElementById('monthly-bar'),
-    ring: document.getElementById('monthly-ring'),
-    ringLabel: document.getElementById('monthly-ring-label')
+    row: byId('row-monthly'),
+    pct: byId('monthly-val'),
+    reset: byId('monthly-sub'),
+    bar: byId('monthly-bar')
   }
 }
 
@@ -113,11 +97,8 @@ const systemThemeQuery = typeof window.matchMedia === 'function'
 
 let countdownHandle = null
 let heightFrame = null
-let gripDragging = false
-let userResized = false   // set true after manual resize; clears on view change
 
 function showView(name) {
-  userResized = false      // new view → let auto-height-sync take over again
   state.currentView = name
   document.body.dataset.view = name
   VIEWS.forEach((key) => view[key]?.classList.add('hidden'))
@@ -129,7 +110,6 @@ function showView(name) {
 function setOrgName(name) {
   state.orgName = name || ''
   dom.orgName.textContent = state.orgName
-  dom.heroOrg.textContent = state.orgName || 'No org selected'
 }
 
 function setAuthenticated(flag) {
@@ -143,12 +123,13 @@ function effectiveDetailsOpen() {
 
 function syncActionButtons() {
   const canUseWidgetActions = state.authenticated && state.currentView === 'widget'
+
   dom.btnRefresh.disabled = !canUseWidgetActions
   dom.btnDetails.disabled = !canUseWidgetActions || state.settingsOpen || state.settings.compactMode
   dom.btnCompact.disabled = !canUseWidgetActions || state.settingsOpen
   dom.btnSettings.disabled = !canUseWidgetActions
 
-  dom.btnDetails.classList.toggle('is-active', effectiveDetailsOpen())
+  dom.btnDetails.classList.toggle('is-active', effectiveDetailsOpen() && !state.settingsOpen)
   dom.btnCompact.classList.toggle('is-active', !!state.settings.compactMode)
   dom.btnSettings.classList.toggle('is-active', !!state.settingsOpen)
   dom.btnDetails.innerHTML = effectiveDetailsOpen() ? '&#9651;' : '&#9661;'
@@ -172,6 +153,7 @@ function formatTokens(value) {
   if (value == null || Number.isNaN(Number(value))) return '-'
   const numeric = Number(value)
   const abs = Math.abs(numeric)
+
   if (abs >= 1_000_000_000) return `${(numeric / 1_000_000_000).toFixed(2)}B`
   if (abs >= 1_000_000) return `${(numeric / 1_000_000).toFixed(2)}M`
   if (abs >= 1_000) return `${(numeric / 1_000).toFixed(1)}k`
@@ -213,12 +195,21 @@ function formatReset(isoDate) {
   return `resets in ${minutes}m`
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
 function startCountdowns(sessionResetsAt, weeklyResetsAt) {
   stopCountdowns()
 
   const tick = () => {
-    metricDom.session.reset.textContent = formatReset(sessionResetsAt)
-    metricDom.weekly.reset.textContent = formatReset(weeklyResetsAt)
+    metricDom.session.reset.textContent = formatReset(sessionResetsAt) || 'waiting for sync'
+    metricDom.weekly.reset.textContent = formatReset(weeklyResetsAt) || 'waiting for sync'
   }
 
   tick()
@@ -226,10 +217,9 @@ function startCountdowns(sessionResetsAt, weeklyResetsAt) {
 }
 
 function stopCountdowns() {
-  if (countdownHandle) {
-    clearInterval(countdownHandle)
-    countdownHandle = null
-  }
+  if (!countdownHandle) return
+  clearInterval(countdownHandle)
+  countdownHandle = null
 }
 
 function getSeverity(pct) {
@@ -240,72 +230,31 @@ function getSeverity(pct) {
   return 'healthy'
 }
 
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function setToneClass(element, tone) {
-  if (!element) return
-  element.classList.remove('is-pending', 'is-healthy', 'is-warn', 'is-danger', 'is-local', 'is-accent')
-  element.classList.add(`is-${tone}`)
-}
-
-function setRowTone(row, tone) {
+function setRowState(row, severity) {
   if (!row) return
-  row.classList.remove('tone-pending', 'tone-healthy', 'tone-warn', 'tone-danger', 'tone-local')
-  row.classList.add(`tone-${tone}`)
-}
-
-function chipLabelForTone(tone) {
-  if (tone === 'danger') return 'Critical'
-  if (tone === 'warn') return 'Watch'
-  if (tone === 'healthy') return 'Healthy'
-  if (tone === 'local') return 'Local'
-  return 'Pending'
-}
-
-function renderRing(progressEl, labelEl, pct, options = {}) {
-  const { fallbackLabel = '--' } = options
-  if (!progressEl || !labelEl) return
-
-  if (pct == null || Number.isNaN(Number(pct))) {
-    progressEl.style.strokeDasharray = '0 100'
-    labelEl.textContent = fallbackLabel
-    return
-  }
-
-  const clamped = Math.max(0, Math.min(100, Number(pct)))
-  progressEl.style.strokeDasharray = `${clamped} ${100 - clamped}`
-  labelEl.textContent = `${Math.round(clamped)}%`
+  row.classList.remove('state-warn', 'state-danger')
+  if (severity === 'warn') row.classList.add('state-warn')
+  if (severity === 'danger') row.classList.add('state-danger')
 }
 
 function renderApiMetric(key, pct, resetsAt) {
   const metric = metricDom[key]
   if (!metric) return
 
-  const tone = getSeverity(pct)
-  setRowTone(metric.row, tone)
-  setToneClass(metric.status, tone)
-  metric.status.textContent = chipLabelForTone(tone)
+  const severity = getSeverity(pct)
+  setRowState(metric.row, severity)
 
   if (pct == null || Number.isNaN(Number(pct))) {
     metric.pct.textContent = '-'
     metric.bar.style.width = '0%'
-    renderRing(metric.ring, metric.ringLabel, null)
-    if (!resetsAt) metric.reset.textContent = 'waiting for sync'
+    metric.reset.textContent = resetsAt ? formatReset(resetsAt) : 'waiting for sync'
     return
   }
 
   const clamped = Math.max(0, Math.min(100, Number(pct)))
   metric.pct.textContent = `${clamped.toFixed(1)}%`
   metric.bar.style.width = `${clamped}%`
-  metric.reset.textContent = formatReset(resetsAt)
-  renderRing(metric.ring, metric.ringLabel, clamped)
+  metric.reset.textContent = formatReset(resetsAt) || 'waiting for sync'
 }
 
 function renderMonthly(local) {
@@ -314,20 +263,16 @@ function renderMonthly(local) {
   const today = local?.todayTokens ?? null
   const weekly = local?.weeklyTokens ?? null
 
-  setRowTone(metric.row, 'local')
-  setToneClass(metric.status, 'local')
-  metric.status.textContent = 'Local'
-  metric.ringLabel.textContent = '30d'
+  setRowState(metric.row, 'healthy')
 
   if (monthly == null) {
     metric.pct.textContent = '-'
-    metric.reset.textContent = 'local stats not found'
     metric.bar.style.width = '0%'
-    metric.ring.style.strokeDasharray = '0 100'
+    metric.reset.textContent = 'local stats not found'
     return
   }
 
-  const baselineFloor = Math.max(
+  const baseline = Math.max(
     monthly,
     (weekly || 0) * 4.2,
     (today || 0) * 30,
@@ -335,63 +280,46 @@ function renderMonthly(local) {
     1
   )
 
-  state.monthlyBaseline = baselineFloor
-  const relativePct = Math.min(100, (monthly / state.monthlyBaseline) * 100)
+  state.monthlyBaseline = baseline
+
+  const relativePct = Math.min(100, (monthly / baseline) * 100)
+  const parts = []
+
+  if (today != null) parts.push(`today ${formatTokens(today)}`)
+  if (weekly != null) parts.push(`7d ${formatTokens(weekly)}`)
 
   metric.pct.textContent = formatTokens(monthly)
   metric.bar.style.width = `${relativePct}%`
-  renderRing(metric.ring, metric.ringLabel, relativePct, { fallbackLabel: '30d' })
-  metric.ringLabel.textContent = '30d'
-
-  const parts = []
-  if (today != null) parts.push(`today ${formatTokens(today)}`)
-  if (weekly != null) parts.push(`7d ${formatTokens(weekly)}`)
-  metric.reset.textContent = parts.join(' · ')
-}
-
-function renderFacts(local) {
-  dom.factToday.textContent = formatTokens(local?.todayTokens)
-  dom.factWeek.textContent = formatTokens(local?.weeklyTokens)
-  dom.factAlltime.textContent = formatTokens(local?.allTimeTokens)
+  metric.reset.textContent = parts.join(' · ') || 'local 30-day total'
 }
 
 function renderSummary(local) {
   dom.alltimeVal.textContent = formatTokens(local?.allTimeTokens)
-  dom.alltimeMeta.textContent = local?.modelBreakdown?.length
-    ? `${local.modelBreakdown.length} model${local.modelBreakdown.length === 1 ? '' : 's'} tracked`
-    : 'No local model totals yet'
+
+  if (local?.modelBreakdown?.length) {
+    const count = local.modelBreakdown.length
+    dom.alltimeMeta.textContent = `${count} model${count === 1 ? '' : 's'} tracked`
+  } else {
+    dom.alltimeMeta.textContent = 'No local model totals yet'
+  }
 
   if (local?.firstSessionDate) {
     const first = new Date(local.firstSessionDate)
+    const totalDays = Math.max(1, Math.ceil((Date.now() - first.getTime()) / 86_400_000))
+
     dom.trackedSince.textContent = Number.isNaN(first.getTime())
       ? '-'
       : formatShortDate(local.firstSessionDate)
-
-    const totalDays = Math.max(1, Math.ceil((Date.now() - first.getTime()) / 86_400_000))
     dom.trackedMeta.textContent = `${totalDays} day${totalDays === 1 ? '' : 's'} tracked`
   } else {
     dom.trackedSince.textContent = '-'
     dom.trackedMeta.textContent = 'Waiting for local history'
   }
-
-  const top = local?.modelBreakdown?.[0]
-  if (!top) {
-    dom.topModel.textContent = '-'
-    dom.topModelMeta.textContent = 'No local model leader yet'
-    return
-  }
-
-  dom.topModel.textContent = top.label || top.key || 'Unknown'
-  const share = local?.allTimeTokens > 0
-    ? Math.round((top.totalTokens / local.allTimeTokens) * 100)
-    : null
-  const meta = [formatTokens(top.totalTokens)]
-  if (share != null && Number.isFinite(share)) meta.push(`${share}% share`)
-  dom.topModelMeta.textContent = meta.join(' · ')
 }
 
 function renderModelList(local) {
   const items = local?.modelBreakdown || []
+
   if (!items.length) {
     dom.modelList.innerHTML = '<p class="empty-state">No model totals in local stats.</p>'
     return
@@ -409,7 +337,7 @@ function renderModelList(local) {
           <span class="model-name">${escapeHtml(item.label || item.key || 'Unknown')}</span>
           <span class="model-total">${escapeHtml(formatTokens(item.totalTokens || 0))}</span>
         </div>
-        <div class="model-bar"><span style="width:${width}%"></span></div>
+        <div class="bar-track"><div class="bar-fill local" style="width:${width}%"></div></div>
         <div class="model-meta">
           in ${escapeHtml(formatTokens(item.inputTokens || 0))} · out ${escapeHtml(formatTokens(item.outputTokens || 0))} · cache ${escapeHtml(formatTokens(cacheTotal))}
         </div>
@@ -428,6 +356,7 @@ function buildHistoryPoints(history, days) {
     const date = new Date()
     date.setHours(0, 0, 0, 0)
     date.setDate(date.getDate() - offset)
+
     const iso = toLocalIsoDate(date)
     points.push({
       date: iso,
@@ -439,34 +368,66 @@ function buildHistoryPoints(history, days) {
   return points
 }
 
+function withAlpha(color, alpha) {
+  const value = String(color || '').trim()
+
+  if (/^#([0-9a-f]{3})$/i.test(value)) {
+    const hex = value.slice(1).split('').map((char) => char + char).join('')
+    const r = Number.parseInt(hex.slice(0, 2), 16)
+    const g = Number.parseInt(hex.slice(2, 4), 16)
+    const b = Number.parseInt(hex.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  if (/^#([0-9a-f]{6})$/i.test(value)) {
+    const hex = value.slice(1)
+    const r = Number.parseInt(hex.slice(0, 2), 16)
+    const g = Number.parseInt(hex.slice(2, 4), 16)
+    const b = Number.parseInt(hex.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  const rgbMatch = value.match(/^rgba?\(([^)]+)\)$/i)
+  if (rgbMatch) {
+    const [r, g, b] = rgbMatch[1].split(',').map((part) => part.trim())
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  return `rgba(126, 167, 199, ${alpha})`
+}
+
 function renderHistoryChart(history) {
-  const shouldShow = effectiveDetailsOpen() && !!state.settings.showGraph
+  const shouldShow = effectiveDetailsOpen() && !!state.settings.showGraph && !state.settingsOpen
   dom.chartBlock.classList.toggle('hidden', !shouldShow)
 
-  if (!shouldShow) {
-    dom.chartCanvas.classList.add('hidden')
-    dom.chartEmpty.classList.add('hidden')
-    return
-  }
+  if (!shouldShow) return
 
   const points = buildHistoryPoints(history, 7)
   const hasData = points.some((point) => point.tokens > 0)
+
+  dom.chartSub.textContent = 'local tokens'
   dom.chartEmpty.classList.toggle('hidden', hasData)
   dom.chartCanvas.classList.toggle('hidden', !hasData)
 
-  if (!hasData || typeof window.Chart !== 'function') return
+  if (!hasData || typeof window.Chart !== 'function') {
+    if (state.chart) {
+      state.chart.destroy()
+      state.chart = null
+    }
+    return
+  }
 
   const styles = getComputedStyle(document.documentElement)
-  const accentColor = styles.getPropertyValue('--local').trim()
-  const mutedColor = styles.getPropertyValue('--muted').trim()
-  const borderColor = styles.getPropertyValue('--border').trim()
-  const tooltipBg = styles.getPropertyValue('--panel-solid').trim()
-  const textColor = styles.getPropertyValue('--text').trim()
+  const localColor = styles.getPropertyValue('--local').trim() || '#7EA7C7'
+  const mutedColor = styles.getPropertyValue('--muted').trim() || '#8A8A93'
+  const borderColor = styles.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.08)'
+  const tooltipBg = styles.getPropertyValue('--bg-card').trim() || '#1C1C21'
+  const textColor = styles.getPropertyValue('--text').trim() || '#ECECEC'
 
   const ctx = dom.chartCanvas.getContext('2d')
-  const gradient = ctx.createLinearGradient(0, 0, 0, dom.chartCanvas.height || 190)
-  gradient.addColorStop(0, accentColor.replace('rgb', 'rgba').replace(')', ', 0.35)'))
-  gradient.addColorStop(1, accentColor.replace('rgb', 'rgba').replace(')', ', 0.02)'))
+  const gradient = ctx.createLinearGradient(0, 0, 0, dom.chartCanvas.height || 160)
+  gradient.addColorStop(0, withAlpha(localColor, 0.35))
+  gradient.addColorStop(1, withAlpha(localColor, 0.04))
 
   const config = {
     type: 'line',
@@ -474,14 +435,14 @@ function renderHistoryChart(history) {
       labels: points.map((point) => point.label),
       datasets: [{
         data: points.map((point) => point.tokens),
-        borderColor: accentColor,
+        borderColor: localColor,
         backgroundColor: gradient,
         fill: true,
         tension: 0.35,
         borderWidth: 2.5,
         pointRadius: 0,
         pointHoverRadius: 4,
-        pointBackgroundColor: accentColor,
+        pointBackgroundColor: localColor,
         pointBorderWidth: 0
       }]
     },
@@ -530,34 +491,9 @@ function renderHistoryChart(history) {
   }
 }
 
-function mascotToneAndCopy(payload) {
-  const sessionTone = getSeverity(payload?.api?.sessionPct)
-  const weeklyTone = getSeverity(payload?.api?.weeklyPct)
-  const rank = { pending: 0, healthy: 1, warn: 2, danger: 3 }
-  const winner = rank[sessionTone] >= rank[weeklyTone] ? sessionTone : weeklyTone
-
-  if (winner === 'danger') return { tone: 'danger', label: 'Throttle now' }
-  if (winner === 'warn') return { tone: 'warn', label: 'Watch the meter' }
-  if (winner === 'healthy') return { tone: 'healthy', label: 'In the clear' }
-  if (payload?.local?.allTimeTokens) return { tone: 'local', label: 'Local only' }
-  return { tone: 'accent', label: 'Stand by' }
-}
-
-function renderHero(payload) {
-  dom.heroOrg.textContent = state.orgName || 'No org selected'
-  dom.heroUpdated.textContent = payload?.lastUpdated
-    ? `Updated ${formatClock(payload.lastUpdated)}`
-    : 'Waiting for data'
-
-  const mascot = mascotToneAndCopy(payload)
-  setToneClass(dom.mascotStatus, mascot.tone)
-  dom.mascotStatus.textContent = mascot.label
-}
-
 function renderUsageData(payload) {
   state.usage = payload
-  renderHero(payload)
-  renderFacts(payload?.local || null)
+
   renderApiMetric('session', payload?.api?.sessionPct ?? null, payload?.api?.sessionResetsAt ?? null)
   renderApiMetric('weekly', payload?.api?.weeklyPct ?? null, payload?.api?.weeklyResetsAt ?? null)
   renderMonthly(payload?.local || null)
@@ -576,8 +512,6 @@ function renderUsageData(payload) {
 
 function resetUsageUi() {
   state.usage = null
-  renderHero(null)
-  renderFacts(null)
   renderApiMetric('session', null, null)
   renderApiMetric('weekly', null, null)
   renderMonthly(null)
@@ -594,7 +528,9 @@ function applyTheme() {
 
   document.documentElement.dataset.theme = preferred
 
-  if (state.usage?.local) renderHistoryChart(state.usage.local.history || [])
+  if (state.usage?.local) {
+    renderHistoryChart(state.usage.local.history || [])
+  }
 }
 
 function syncSettingsForm() {
@@ -615,12 +551,12 @@ function syncUiFromSettings() {
 
   document.body.classList.toggle('compact-mode', !!state.settings.compactMode)
   document.body.classList.toggle('settings-open', !!state.settingsOpen)
-  document.body.classList.toggle('details-open', effectiveDetailsOpen())
+  document.body.classList.toggle('details-open', effectiveDetailsOpen() && !state.settingsOpen)
 
   dom.usagePanel.classList.toggle('hidden', !!state.settingsOpen)
   dom.settingsPanel.classList.toggle('hidden', !state.settingsOpen)
-  dom.detailsPanel.classList.toggle('hidden', !effectiveDetailsOpen())
-  dom.chartBlock.classList.toggle('hidden', !effectiveDetailsOpen() || !state.settings.showGraph)
+  dom.detailsPanel.classList.toggle('hidden', !effectiveDetailsOpen() || !!state.settingsOpen)
+  dom.chartBlock.classList.toggle('hidden', !effectiveDetailsOpen() || !state.settings.showGraph || !!state.settingsOpen)
 
   syncActionButtons()
 
@@ -631,7 +567,6 @@ function syncUiFromSettings() {
 }
 
 function scheduleHeightSync() {
-  if (gripDragging || userResized) return  // don't fight a manual resize
   if (heightFrame) cancelAnimationFrame(heightFrame)
 
   heightFrame = requestAnimationFrame(() => {
@@ -673,7 +608,6 @@ function closeSettingsPanel({ skipIpc = false } = {}) {
 
 function resetWidgetPanels() {
   state.settingsOpen = false
-  document.body.classList.remove('settings-open')
   syncUiFromSettings()
 }
 
@@ -689,36 +623,6 @@ function persistThresholds(changed) {
   dom.settingsWarn.value = warn
   dom.settingsDanger.value = danger
   saveSettingsPatch({ warnThreshold: warn, dangerThreshold: danger })
-}
-
-function bindResizeGrip() {
-  if (!dom.resizeGrip) return
-
-  const handleMove = (event) => {
-    if (!gripDragging) return
-    window.api.resizeWindow({ screenX: event.screenX, screenY: event.screenY })
-  }
-
-  const stopResize = () => {
-    if (!gripDragging) return
-    gripDragging = false
-    userResized = true      // remember user took control; pause auto-height-sync
-    document.body.classList.remove('is-resizing')
-    window.api.endWindowResize()
-    window.removeEventListener('mousemove', handleMove)
-    window.removeEventListener('mouseup', stopResize)
-  }
-
-  dom.resizeGrip.addEventListener('mousedown', (event) => {
-    event.preventDefault()
-    gripDragging = true
-    document.body.classList.add('is-resizing')
-    window.api.startWindowResize({ screenX: event.screenX, screenY: event.screenY })
-    window.addEventListener('mousemove', handleMove)
-    window.addEventListener('mouseup', stopResize)
-  })
-
-  window.addEventListener('blur', stopResize)
 }
 
 function bindEvents() {
@@ -755,6 +659,7 @@ function bindEvents() {
       dom.manualKey.focus()
       return
     }
+
     window.api.manualLogin(key)
     showView('validating')
   })
@@ -878,7 +783,6 @@ if (systemThemeQuery) {
 
 bindEvents()
 bindIpc()
-bindResizeGrip()
 window.api.getSettings()
 showView('loading')
 resetUsageUi()
