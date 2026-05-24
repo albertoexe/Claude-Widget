@@ -64,6 +64,8 @@
 html, body { height: 100%; overflow: hidden; }
 
 body {
+  --provider-accent: var(--accent);
+  --provider-accent-soft: var(--accent-soft);
   font-family: var(--font);
   background: transparent; /* let the BrowserWindow stay transparent for the floating-card look */
   color: var(--text);
@@ -74,6 +76,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: 0.005em;
+}
+
+body[data-provider="codex"] {
+  --provider-accent: var(--local);
+  --provider-accent-soft: color-mix(in oklab, var(--local) 18%, transparent);
 }
 
 /* Outer wrapper card — the “floating widget” edge.
@@ -107,27 +114,57 @@ button, input, select { font: inherit; }
   border-radius: var(--radius) var(--radius) 0 0;
 }
 
-#app-title {
+#titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+#titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.provider-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 0.5px solid var(--border);
+}
+
+.provider-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  min-width: 52px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  cursor: pointer;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--text);
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
 }
 
-/* The aperture mark — pure CSS, no SVG needed.
-   Add ::before to #app-title via this rule. */
-#app-title::before {
-  content: '';
-  width: 10px; height: 10px; border-radius: 999px;
-  background:
-    radial-gradient(circle at center, var(--accent) 0 2.5px, transparent 3px),
-    radial-gradient(circle at center, transparent 0 4px, var(--accent) 4px 5px, transparent 5.5px);
-  flex-shrink: 0;
-  opacity: 0.95;
+.provider-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.provider-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.provider-btn.is-active {
+  color: var(--text);
+  background: var(--provider-accent-soft);
 }
 
 #titlebar-right {
@@ -171,8 +208,8 @@ button, input, select { font: inherit; }
 }
 #window-controls button:disabled { opacity: 0.35; cursor: default; }
 #window-controls button.is-active {
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--provider-accent);
+  background: var(--provider-accent-soft);
 }
 #btn-close:hover:not(:disabled) { color: var(--danger); }
 
@@ -387,9 +424,9 @@ select:focus {
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: var(--local);
-  border: 0.5px solid color-mix(in oklab, var(--local) 50%, transparent);
-  background: color-mix(in oklab, var(--local) 8%, transparent);
+  color: var(--provider-accent);
+  border: 0.5px solid color-mix(in oklab, var(--provider-accent) 50%, transparent);
+  background: color-mix(in oklab, var(--provider-accent) 8%, transparent);
   border-radius: 3px;
   padding: 1px 4px;
   line-height: 1.5;
@@ -413,14 +450,18 @@ select:focus {
 }
 .bar-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--provider-accent);
   border-radius: 999px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
-  box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 35%, transparent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--provider-accent) 35%, transparent);
 }
 .bar-fill.local {
-  background: var(--local);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--local) 35%, transparent);
+  background: var(--provider-accent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--provider-accent) 35%, transparent);
+}
+.bar-fill.codex {
+  background: var(--provider-accent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--provider-accent) 35%, transparent);
 }
 .state-warn   .bar-fill { background: var(--warn);   box-shadow: 0 0 8px color-mix(in oklab, var(--warn)   35%, transparent); }
 .state-danger .bar-fill { background: var(--danger); box-shadow: 0 0 8px color-mix(in oklab, var(--danger) 35%, transparent); }
@@ -664,10 +705,10 @@ select:focus {
   transition: left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .setting-toggle input[type="checkbox"]:checked {
-  background: var(--accent);
+  background: var(--provider-accent);
   box-shadow:
-    0 0 0 0.5px var(--accent),
-    0 0 8px color-mix(in oklab, var(--accent) 35%, transparent);
+    0 0 0 0.5px var(--provider-accent),
+    0 0 8px color-mix(in oklab, var(--provider-accent) 35%, transparent);
 }
 .setting-toggle input[type="checkbox"]:checked::after { left: 13px; }
 

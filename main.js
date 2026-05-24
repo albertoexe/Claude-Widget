@@ -22,6 +22,7 @@ const path = require('path')
 const fs   = require('fs')
 const os   = require('os')
 const zlib = require('zlib')
+const Database = require('better-sqlite3')
 const Store = require('electron-store')
 const { fetchViaWindow } = require('./src/fetch-via-window')
 
@@ -30,6 +31,8 @@ const CLAUDE_BASE         = 'https://claude.ai'
 const SESSION_COOKIE_NAME = 'sessionKey'
 const PARTITION           = 'persist:claude'
 const STATS_PATH          = path.join(os.homedir(), '.claude', 'stats-cache.json')
+const CODEX_DB_PATH       = path.join(os.homedir(), '.codex', 'state_5.sqlite')
+const CODEX_SESSIONS_PATH = path.join(os.homedir(), '.codex', 'sessions')
 
 // Named window sizes
 const WIN = {
@@ -49,11 +52,12 @@ const store = new Store({
     refreshInterval: 5,
     alwaysOnTop:     true,
     theme:           'system',
-    compactMode:     false,
+    compactMode:     true,
     warnThreshold:   70,
     dangerThreshold: 90,
     notifications:   true,
     launchAtStartup: false,
+    activeProvider:  'claude',
     selectedOrgId:   null,
     windowBounds:    { x: null, y: null, ...WIN.login },
     showGraph:       false,
@@ -103,6 +107,10 @@ function loadSessionKey () {
 
 function clearCredentials () { store.delete('credentials') }
 
+function getActiveProvider () {
+  return store.get('activeProvider') === 'codex' ? 'codex' : 'claude'
+}
+
 // ── Org helpers ───────────────────────────────────────────────────────────────
 
 async function discoverOrgs () {
@@ -131,6 +139,12 @@ function formatModelName (key) {
     .replace(/^claude-/, '')
     .replace(/-\d{8}$/, '')
     .replace(/-(\d)-(\d)\b/g, ' $1.$2')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase())
+}
+
+function formatCodexModelName (key) {
+  return String(key || 'Unknown')
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (match) => match.toUpperCase())
 }
@@ -212,26 +226,54 @@ function stopRefreshLoop () {
 }
 
 async function doRefresh () {
+  const provider = getActiveProvider()
   const orgId = store.get('selectedOrgId')
-  if (!orgId) return
 
   try {
-    const [rawApi, local] = await Promise.all([
-      fetchUsage(orgId),
-      Promise.resolve(readLocalStats())
-    ])
+    if (provider === 'claude') {
+      if (!orgId) return
 
-    if (rawApi?.type === 'error') {
-      throw new Error(`API error: ${rawApi.error?.message ?? JSON.stringify(rawApi.error)}`)
+      const [rawApi, local] = await Promise.all([
+        fetchUsage(orgId),
+        Promise.resolve(readLocalStats())
+      ])
+
+      if (rawApi?.type === 'error') {
+        throw new Error(`API error: ${rawApi.error?.message ?? JSON.stringify(rawApi.error)}`)
+      }
+
+      const api = parseApiUsage(rawApi)
+      console.log('[data] Claude session:', api.sessionPct?.toFixed(1), '%  Weekly:', api.weeklyPct?.toFixed(1), '%')
+
+      mainWindow?.webContents.send('usage:push', {
+        provider,
+        claude: { api, local },
+        lastUpdated: new Date().toISOString()
+      })
+
+      updateTrayIcon(api.sessionPct, api.weeklyPct)
+      checkNotifications(api)
+      return
     }
 
-    const api = parseApiUsage(rawApi)
-    console.log('[data] Session:', api.sessionPct?.toFixed(1), '%  Weekly:', api.weeklyPct?.toFixed(1), '%')
+    const [local, rateLimits] = await Promise.all([
+      Promise.resolve(readCodexStats()),
+      Promise.resolve(readLatestCodexRateLimits())
+    ])
+    console.log('[data] Codex session used:', rateLimits?.primary?.usedPct ?? null, 'weekly used:', rateLimits?.secondary?.usedPct ?? null)
 
-    mainWindow?.webContents.send('usage:push', { api, local, lastUpdated: new Date().toISOString() })
+    mainWindow?.webContents.send('usage:push', {
+      provider,
+      codex: { local, rateLimits },
+      lastUpdated: rateLimits?.lastUpdated || new Date().toISOString()
+    })
 
-    updateTrayIcon(api.sessionPct, api.weeklyPct)
-    checkNotifications(api)
+    if (tray) {
+      updateTrayIcon(rateLimits?.primary?.usedPct ?? null, rateLimits?.secondary?.usedPct ?? null)
+      const sessionUsed = rateLimits?.primary?.usedPct != null ? `${Math.round(rateLimits.primary.usedPct)}%` : '?'
+      const weeklyUsed = rateLimits?.secondary?.usedPct != null ? `${Math.round(rateLimits.secondary.usedPct)}%` : '?'
+      tray.setToolTip(`Claude Widget  ?  Codex  ?  Session ${sessionUsed}  ?  Weekly ${weeklyUsed}`)
+    }
   } catch (e) {
     console.error('[data] Refresh failed:', e.message)
     if (/(401|403|session|expired|cloudflare)/i.test(e.message)) {
@@ -460,6 +502,166 @@ function applyMinimumSize (width, height, options = {}) {
   }
 }
 
+function toLocalIsoDate (value) {
+  const date = value instanceof Date ? value : new Date(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function readCodexStats () {
+  let db = null
+
+  try {
+    db = new Database(CODEX_DB_PATH, { readonly: true, fileMustExist: true })
+
+    const rows = db.prepare(`
+      SELECT
+        created_at_ms AS createdAtMs,
+        COALESCE(model, 'unknown') AS model,
+        COALESCE(tokens_used, 0) AS tokensUsed
+      FROM threads
+      WHERE COALESCE(tokens_used, 0) > 0
+        AND COALESCE(title, '') NOT LIKE 'User''s request:%'
+      ORDER BY created_at_ms ASC
+    `).all()
+
+    return computeCodexMetrics(rows)
+  } catch (error) {
+    console.warn('[codex] Failed to read local usage:', error.message)
+    return null
+  } finally {
+    if (db) db.close()
+  }
+}
+
+function computeCodexMetrics (rows) {
+  if (!Array.isArray(rows) || !rows.length) return null
+
+  const dailyTotals = new Map()
+  const modelTotals = new Map()
+  let allTimeTokens = 0
+
+  for (const row of rows) {
+    const tokens = Number(row.tokensUsed) || 0
+    if (tokens <= 0) continue
+
+    const day = toLocalIsoDate(new Date(Number(row.createdAtMs) || 0))
+    dailyTotals.set(day, (dailyTotals.get(day) || 0) + tokens)
+
+    const modelKey = row.model || 'unknown'
+    const current = modelTotals.get(modelKey) || {
+      key: modelKey,
+      label: formatCodexModelName(modelKey),
+      totalTokens: 0,
+      threadCount: 0
+    }
+
+    current.totalTokens += tokens
+    current.threadCount += 1
+    modelTotals.set(modelKey, current)
+    allTimeTokens += tokens
+  }
+
+  const history = [...dailyTotals.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, tokens]) => ({ date, tokens }))
+
+  if (!history.length) return null
+
+  const today = toLocalIsoDate(new Date())
+  const rollingCutoff = (days) => {
+    const cutoff = new Date()
+    cutoff.setHours(0, 0, 0, 0)
+    cutoff.setDate(cutoff.getDate() - (days - 1))
+    return toLocalIsoDate(cutoff)
+  }
+
+  const sumSince = (days) => {
+    const cutoff = rollingCutoff(days)
+    return history
+      .filter((entry) => entry.date >= cutoff)
+      .reduce((sum, entry) => sum + entry.tokens, 0)
+  }
+
+  return {
+    todayTokens: history.find((entry) => entry.date === today)?.tokens || 0,
+    weeklyTokens: sumSince(7),
+    monthlyTokens: sumSince(30),
+    allTimeTokens,
+    modelBreakdown: [...modelTotals.values()].sort((a, b) => b.totalTokens - a.totalTokens),
+    history: history.slice(-30),
+    firstSessionDate: history[0]?.date || null,
+    totalThreads: rows.length
+  }
+}
+
+function toIsoStringFromEpochSeconds (seconds) {
+  if (!Number.isFinite(Number(seconds))) return null
+  return new Date(Number(seconds) * 1000).toISOString()
+}
+
+function collectJsonlFiles (rootDir) {
+  const files = []
+
+  function walk (dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const nextPath = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(nextPath)
+      else if (entry.isFile() && nextPath.endsWith('.jsonl')) files.push(nextPath)
+    }
+  }
+
+  walk(rootDir)
+  return files
+}
+
+function normalizeCodexWindow (windowData) {
+  if (!windowData) return null
+
+  const usedPct = Math.max(0, Math.min(100, Number(windowData.used_percent) || 0))
+  return {
+    usedPct,
+    leftPct: Math.max(0, 100 - usedPct),
+    windowMinutes: Number(windowData.window_minutes) || null,
+    resetsAt: toIsoStringFromEpochSeconds(windowData.resets_at)
+  }
+}
+
+function readLatestCodexRateLimits () {
+  try {
+    const files = collectJsonlFiles(CODEX_SESSIONS_PATH)
+      .map((filePath) => ({ filePath, mtimeMs: fs.statSync(filePath).mtimeMs }))
+      .sort((a, b) => b.mtimeMs - a.mtimeMs)
+
+    for (const { filePath } of files.slice(0, 25)) {
+      const lines = fs.readFileSync(filePath, 'utf8').trim().split(/\r?\n/)
+
+      for (let index = lines.length - 1; index >= 0; index -= 1) {
+        try {
+          const event = JSON.parse(lines[index])
+          const payload = event?.payload
+          const rate = payload?.rate_limits
+
+          if (event?.type !== 'event_msg' || payload?.type !== 'token_count' || !rate) continue
+
+          return {
+            primary: normalizeCodexWindow(rate.primary),
+            secondary: normalizeCodexWindow(rate.secondary),
+            planType: rate.plan_type || null,
+            lastUpdated: event.timestamp || null
+          }
+        } catch {}
+      }
+    }
+  } catch (error) {
+    console.warn('[codex] Failed to read rate limits:', error.message)
+  }
+
+  return null
+}
+
 function captureExpandedBounds () {
   if (!mainWindow || mainWindow.isDestroyed()) return
   if (store.get('compactMode')) return
@@ -649,12 +851,9 @@ function registerIPC () {
   ipcMain.on('window:alwaysOnTop', (_e, f) => { mainWindow?.setAlwaysOnTop(Boolean(f)); store.set('alwaysOnTop', Boolean(f)); updateTrayMenu() })
   ipcMain.on('window:setHeight',   (_e, h) => {
     if (!mainWindow || mainWindow.isDestroyed()) return
-    // Only grow — never shrink and never update the minimum size here.
-    // Updating the minimum to content height would prevent the user from
-    // manually resizing the window smaller via the resize grip.
     const targetHeight = Math.max(viewMinimum.height, Math.min(1600, Math.round(h)))
     const [currentWidth, currentHeight] = mainWindow.getSize()
-    if (currentHeight < targetHeight) {
+    if (currentHeight !== targetHeight) {
       mainWindow.setSize(currentWidth, targetHeight, true)
     }
   })
@@ -715,6 +914,7 @@ function registerIPC () {
 
     if ('launchAtStartup' in p) syncLoginItem()
     if ('refreshInterval' in p) { stopRefreshLoop(); startRefreshLoop() }
+    if ('activeProvider' in p) doRefresh()
     if ('alwaysOnTop' in p) {
       mainWindow?.setAlwaysOnTop(Boolean(p.alwaysOnTop))
       updateTrayMenu()

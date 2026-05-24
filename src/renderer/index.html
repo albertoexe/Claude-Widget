@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- (C) Claude Widget — premium UI shell
+<!-- (C) Claude Widget ? premium UI shell
      Drop-in replacement for src/renderer/index.html
      Preserves every id/class queried by app.js. -->
 <html lang="en">
@@ -20,7 +20,12 @@
 </head>
 <body>
   <div id="titlebar">
-    <span id="app-title">Claude</span>
+    <div id="titlebar-left">
+      <div id="provider-toggle" class="provider-toggle" aria-label="Usage source">
+        <button id="btn-provider-claude" class="provider-btn" title="Show Claude usage">Claude</button>
+        <button id="btn-provider-codex" class="provider-btn" title="Show Codex usage">Codex</button>
+      </div>
+    </div>
     <div id="titlebar-right">
       <span id="org-name" class="org-badge"></span>
       <div id="window-controls">
@@ -35,7 +40,7 @@
   </div>
 
   <div id="view-loading" class="view hidden">
-    <p class="status-text">Checking session…</p>
+    <p class="status-text">Checking session?</p>
   </div>
 
   <div id="view-login" class="view hidden">
@@ -47,13 +52,13 @@
       <button id="btn-auto-login" class="btn-primary">Auto-detect login</button>
       <div class="divider"><span>or paste key</span></div>
       <label for="manual-key">Session key <span class="muted">(advanced)</span></label>
-      <input id="manual-key" type="password" placeholder="sk_ant_••••••••••••" autocomplete="off" />
+      <input id="manual-key" type="password" placeholder="sk_ant_????????????" autocomplete="off" />
       <button id="btn-manual-login" class="btn-secondary">Use this key</button>
     </div>
   </div>
 
   <div id="view-validating" class="view hidden">
-    <p class="status-text">Validating session…</p>
+    <p class="status-text">Validating session?</p>
   </div>
 
   <div id="view-widget" class="view hidden">
@@ -61,8 +66,8 @@
       <div class="widget-body">
         <div class="usage-row" id="row-session">
           <div class="row-header">
-            <span class="row-label">Session</span>
-            <span class="row-pct" id="session-pct">—</span>
+            <span class="row-label"><span id="label-session">Session</span></span>
+            <span class="row-pct" id="session-pct">?</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill" id="session-bar" style="width:0%"></div>
@@ -72,8 +77,8 @@
 
         <div class="usage-row" id="row-weekly">
           <div class="row-header">
-            <span class="row-label">Weekly</span>
-            <span class="row-pct" id="weekly-pct">—</span>
+            <span class="row-label"><span id="label-weekly">Weekly</span></span>
+            <span class="row-pct" id="weekly-pct">?</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
@@ -83,8 +88,8 @@
 
         <div class="usage-row" id="row-monthly">
           <div class="row-header">
-            <span class="row-label">Monthly <span class="local-badge">LOCAL</span></span>
-            <span class="row-pct" id="monthly-val">—</span>
+            <span class="row-label"><span id="label-monthly">Monthly</span><span class="local-badge" id="badge-monthly">LOCAL</span></span>
+            <span class="row-pct" id="monthly-val">?</span>
           </div>
           <div class="bar-track">
             <div class="bar-fill local" id="monthly-bar" style="width:0%"></div>
@@ -97,12 +102,12 @@
         <div class="summary-grid">
           <div class="summary-card">
             <span class="summary-label">All-time</span>
-            <span class="summary-value" id="alltime-val">—</span>
+            <span class="summary-value" id="alltime-val">?</span>
             <span class="summary-meta" id="alltime-meta"></span>
           </div>
           <div class="summary-card">
             <span class="summary-label">Tracked</span>
-            <span class="summary-value" id="tracked-since">—</span>
+            <span class="summary-value" id="tracked-since">?</span>
             <span class="summary-meta" id="tracked-meta"></span>
           </div>
         </div>
@@ -192,7 +197,7 @@
       </div>
 
       <div class="settings-footer">
-        <span class="footer-text">v1.0.0 · Induvation</span>
+        <span class="footer-text">v1.0.0 ? Induvation</span>
         <button id="btn-logout-settings" class="btn-ghost">sign out</button>
       </div>
     </div>

@@ -18,11 +18,17 @@ const dom = {
   chartSub: byId('chart-sub'),
   modelList: byId('model-list'),
   orgName: byId('org-name'),
+  labelSession: byId('label-session'),
+  labelWeekly: byId('label-weekly'),
+  labelMonthly: byId('label-monthly'),
+  badgeMonthly: byId('badge-monthly'),
   alltimeVal: byId('alltime-val'),
   alltimeMeta: byId('alltime-meta'),
   trackedSince: byId('tracked-since'),
   trackedMeta: byId('tracked-meta'),
   lastUpdated: byId('last-updated'),
+  btnProviderClaude: byId('btn-provider-claude'),
+  btnProviderCodex: byId('btn-provider-codex'),
   btnRefresh: byId('btn-refresh'),
   btnDetails: byId('btn-details'),
   btnCompact: byId('btn-compact'),
@@ -79,11 +85,12 @@ const state = {
     refreshInterval: 5,
     alwaysOnTop: true,
     theme: 'system',
-    compactMode: false,
+    compactMode: true,
     warnThreshold: 70,
     dangerThreshold: 90,
     notifications: true,
     launchAtStartup: false,
+    activeProvider: 'claude',
     showGraph: false,
     isExpanded: false,
     timeFormat: '12h',
@@ -121,14 +128,37 @@ function effectiveDetailsOpen() {
   return state.authenticated && !state.settings.compactMode && Boolean(state.settings.isExpanded)
 }
 
+function isCodexProvider() {
+  return state.settings.activeProvider === 'codex'
+}
+
+function normalizeProvider(value) {
+  return value === 'codex' ? 'codex' : 'claude'
+}
+
+function applyProviderLabels() {
+  const codex = isCodexProvider()
+
+  dom.labelSession.textContent = 'Session'
+  dom.labelWeekly.textContent = 'Weekly'
+  dom.labelMonthly.textContent = 'Monthly'
+  dom.badgeMonthly.classList.toggle('hidden', codex)
+  metricDom.monthly.row.classList.toggle('hidden', codex)
+}
+
 function syncActionButtons() {
   const canUseWidgetActions = state.authenticated && state.currentView === 'widget'
 
+  dom.btnProviderClaude.disabled = !canUseWidgetActions
+  dom.btnProviderCodex.disabled = !canUseWidgetActions
   dom.btnRefresh.disabled = !canUseWidgetActions
   dom.btnDetails.disabled = !canUseWidgetActions || state.settingsOpen || state.settings.compactMode
   dom.btnCompact.disabled = !canUseWidgetActions || state.settingsOpen
   dom.btnSettings.disabled = !canUseWidgetActions
 
+  dom.btnProviderClaude.classList.toggle('is-active', canUseWidgetActions && !isCodexProvider())
+  dom.btnProviderCodex.classList.toggle('is-active', canUseWidgetActions && isCodexProvider())
+  dom.btnProviderCodex.classList.toggle('codex', true)
   dom.btnDetails.classList.toggle('is-active', effectiveDetailsOpen() && !state.settingsOpen)
   dom.btnCompact.classList.toggle('is-active', !!state.settings.compactMode)
   dom.btnSettings.classList.toggle('is-active', !!state.settingsOpen)
@@ -160,6 +190,11 @@ function formatTokens(value) {
   return String(Math.round(numeric))
 }
 
+function formatPercent(value) {
+  if (value == null || Number.isNaN(Number(value))) return '-'
+  return `${Math.round(Number(value))}%`
+}
+
 function formatShortDate(isoDate) {
   if (!isoDate) return '-'
   const date = new Date(isoDate)
@@ -167,10 +202,29 @@ function formatShortDate(isoDate) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
+function parseDateValue(value) {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') {
+    const ms = value < 1_000_000_000_000 ? value * 1000 : value
+    const date = new Date(ms)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const numeric = Number(value)
+  if (Number.isFinite(numeric) && String(value).trim() !== '') {
+    const ms = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric
+    const date = new Date(ms)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 function formatClock(value) {
   if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+  const date = parseDateValue(value)
+  if (!date) return ''
   return date.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -181,7 +235,9 @@ function formatClock(value) {
 function formatReset(isoDate) {
   if (!isoDate) return ''
 
-  const diff = new Date(isoDate).getTime() - Date.now()
+  const date = parseDateValue(isoDate)
+  if (!date) return ''
+  const diff = date.getTime() - Date.now()
   if (!Number.isFinite(diff)) return ''
   if (diff <= 0) return 'resetting...'
 
@@ -237,10 +293,18 @@ function setRowState(row, severity) {
   if (severity === 'danger') row.classList.add('state-danger')
 }
 
+function setMetricVariant(key, variant) {
+  const metric = metricDom[key]
+  if (!metric) return
+  metric.bar.classList.remove('local', 'codex')
+  if (variant) metric.bar.classList.add(variant)
+}
+
 function renderApiMetric(key, pct, resetsAt) {
   const metric = metricDom[key]
   if (!metric) return
 
+  setMetricVariant(key, null)
   const severity = getSeverity(pct)
   setRowState(metric.row, severity)
 
@@ -252,8 +316,51 @@ function renderApiMetric(key, pct, resetsAt) {
   }
 
   const clamped = Math.max(0, Math.min(100, Number(pct)))
-  metric.pct.textContent = `${clamped.toFixed(1)}%`
+  metric.pct.textContent = formatPercent(clamped)
   metric.bar.style.width = `${clamped}%`
+  metric.reset.textContent = formatReset(resetsAt) || 'waiting for sync'
+}
+
+function renderTokenMetric(key, value, subtitle, baseline) {
+  const metric = metricDom[key]
+  if (!metric) return
+
+  setMetricVariant(key, 'local')
+  setRowState(metric.row, 'healthy')
+
+  if (value == null || Number.isNaN(Number(value))) {
+    metric.pct.textContent = '-'
+    metric.bar.style.width = '0%'
+    metric.reset.textContent = subtitle || 'local usage not found'
+    return
+  }
+
+  const numeric = Math.max(0, Number(value))
+  const width = Math.min(100, (numeric / Math.max(baseline || 1, 1)) * 100)
+
+  metric.pct.textContent = formatTokens(numeric)
+  metric.bar.style.width = `${width}%`
+  metric.reset.textContent = subtitle || 'local usage'
+}
+
+function renderCodexLimitMetric(key, usedPct, resetsAt) {
+  const metric = metricDom[key]
+  if (!metric) return
+
+  const normalizedUsed = usedPct == null ? null : Math.max(0, Math.min(100, Number(usedPct)))
+
+  setMetricVariant(key, 'codex')
+  setRowState(metric.row, getSeverity(normalizedUsed))
+
+  if (normalizedUsed == null || Number.isNaN(normalizedUsed)) {
+    metric.pct.textContent = '-'
+    metric.bar.style.width = '0%'
+    metric.reset.textContent = resetsAt ? formatReset(resetsAt) : 'waiting for sync'
+    return
+  }
+
+  metric.pct.textContent = formatPercent(normalizedUsed)
+  metric.bar.style.width = `${normalizedUsed}%`
   metric.reset.textContent = formatReset(resetsAt) || 'waiting for sync'
 }
 
@@ -263,6 +370,7 @@ function renderMonthly(local) {
   const today = local?.todayTokens ?? null
   const weekly = local?.weeklyTokens ?? null
 
+  setMetricVariant('monthly', 'local')
   setRowState(metric.row, 'healthy')
 
   if (monthly == null) {
@@ -293,12 +401,22 @@ function renderMonthly(local) {
   metric.reset.textContent = parts.join(' · ') || 'local 30-day total'
 }
 
-function renderSummary(local) {
+function renderCodexMetrics(codex) {
+  const rateLimits = codex?.rateLimits || null
+  renderCodexLimitMetric('session', rateLimits?.primary?.usedPct ?? null, rateLimits?.primary?.resetsAt ?? null)
+  renderCodexLimitMetric('weekly', rateLimits?.secondary?.usedPct ?? null, rateLimits?.secondary?.resetsAt ?? null)
+}
+
+function renderSummary(local, provider = 'claude') {
   dom.alltimeVal.textContent = formatTokens(local?.allTimeTokens)
 
   if (local?.modelBreakdown?.length) {
     const count = local.modelBreakdown.length
-    dom.alltimeMeta.textContent = `${count} model${count === 1 ? '' : 's'} tracked`
+    if (provider === 'codex' && local?.totalThreads) {
+      dom.alltimeMeta.textContent = `${local.totalThreads} chats · ${count} model${count === 1 ? '' : 's'}`
+    } else {
+      dom.alltimeMeta.textContent = `${count} model${count === 1 ? '' : 's'} tracked`
+    }
   } else {
     dom.alltimeMeta.textContent = 'No local model totals yet'
   }
@@ -317,7 +435,7 @@ function renderSummary(local) {
   }
 }
 
-function renderModelList(local) {
+function renderModelList(local, provider = 'claude') {
   const items = local?.modelBreakdown || []
 
   if (!items.length) {
@@ -330,6 +448,9 @@ function renderModelList(local) {
   dom.modelList.innerHTML = items.map((item) => {
     const cacheTotal = (item.cacheReadInputTokens || 0) + (item.cacheCreationInputTokens || 0)
     const width = Math.max(6, Math.min(100, ((item.totalTokens || 0) / maxTotal) * 100))
+    const meta = provider === 'codex'
+      ? `${escapeHtml(String(item.threadCount || 0))} chats`
+      : `in ${escapeHtml(formatTokens(item.inputTokens || 0))} · out ${escapeHtml(formatTokens(item.outputTokens || 0))} · cache ${escapeHtml(formatTokens(cacheTotal))}`
 
     return `
       <article class="model-row">
@@ -339,7 +460,7 @@ function renderModelList(local) {
         </div>
         <div class="bar-track"><div class="bar-fill local" style="width:${width}%"></div></div>
         <div class="model-meta">
-          in ${escapeHtml(formatTokens(item.inputTokens || 0))} · out ${escapeHtml(formatTokens(item.outputTokens || 0))} · cache ${escapeHtml(formatTokens(cacheTotal))}
+          ${meta}
         </div>
       </article>
     `
@@ -396,7 +517,7 @@ function withAlpha(color, alpha) {
   return `rgba(126, 167, 199, ${alpha})`
 }
 
-function renderHistoryChart(history) {
+function renderHistoryChart(history, provider = 'claude') {
   const shouldShow = effectiveDetailsOpen() && !!state.settings.showGraph && !state.settingsOpen
   dom.chartBlock.classList.toggle('hidden', !shouldShow)
 
@@ -405,7 +526,7 @@ function renderHistoryChart(history) {
   const points = buildHistoryPoints(history, 7)
   const hasData = points.some((point) => point.tokens > 0)
 
-  dom.chartSub.textContent = 'local tokens'
+  dom.chartSub.textContent = provider === 'codex' ? 'codex local tokens' : 'claude local tokens'
   dom.chartEmpty.classList.toggle('hidden', hasData)
   dom.chartCanvas.classList.toggle('hidden', !hasData)
 
@@ -418,7 +539,9 @@ function renderHistoryChart(history) {
   }
 
   const styles = getComputedStyle(document.documentElement)
-  const localColor = styles.getPropertyValue('--local').trim() || '#7EA7C7'
+  const localColor = styles.getPropertyValue('--provider-accent').trim()
+    || styles.getPropertyValue('--accent').trim()
+    || '#D97757'
   const mutedColor = styles.getPropertyValue('--muted').trim() || '#8A8A93'
   const borderColor = styles.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.08)'
   const tooltipBg = styles.getPropertyValue('--bg-card').trim() || '#1C1C21'
@@ -493,15 +616,25 @@ function renderHistoryChart(history) {
 
 function renderUsageData(payload) {
   state.usage = payload
+  applyProviderLabels()
 
-  renderApiMetric('session', payload?.api?.sessionPct ?? null, payload?.api?.sessionResetsAt ?? null)
-  renderApiMetric('weekly', payload?.api?.weeklyPct ?? null, payload?.api?.weeklyResetsAt ?? null)
-  renderMonthly(payload?.local || null)
-  renderSummary(payload?.local || null)
-  renderModelList(payload?.local || null)
-  renderHistoryChart(payload?.local?.history || [])
-
-  startCountdowns(payload?.api?.sessionResetsAt ?? null, payload?.api?.weeklyResetsAt ?? null)
+  if (isCodexProvider()) {
+    const codex = payload?.codex || null
+    renderCodexMetrics(codex)
+    renderSummary(codex?.local || null, 'codex')
+    renderModelList(codex?.local || null, 'codex')
+    renderHistoryChart(codex?.local?.history || [], 'codex')
+    startCountdowns(codex?.rateLimits?.primary?.resetsAt ?? null, codex?.rateLimits?.secondary?.resetsAt ?? null)
+  } else {
+    const claude = payload?.claude || null
+    renderApiMetric('session', claude?.api?.sessionPct ?? null, claude?.api?.sessionResetsAt ?? null)
+    renderApiMetric('weekly', claude?.api?.weeklyPct ?? null, claude?.api?.weeklyResetsAt ?? null)
+    renderMonthly(claude?.local || null)
+    renderSummary(claude?.local || null, 'claude')
+    renderModelList(claude?.local || null, 'claude')
+    renderHistoryChart(claude?.local?.history || [], 'claude')
+    startCountdowns(claude?.api?.sessionResetsAt ?? null, claude?.api?.weeklyResetsAt ?? null)
+  }
 
   dom.lastUpdated.textContent = payload?.lastUpdated
     ? `updated ${formatClock(payload.lastUpdated)}`
@@ -512,12 +645,18 @@ function renderUsageData(payload) {
 
 function resetUsageUi() {
   state.usage = null
-  renderApiMetric('session', null, null)
-  renderApiMetric('weekly', null, null)
-  renderMonthly(null)
+  applyProviderLabels()
+  if (isCodexProvider()) {
+    renderCodexMetrics(null)
+    renderMonthly(null)
+  } else {
+    renderApiMetric('session', null, null)
+    renderApiMetric('weekly', null, null)
+    renderMonthly(null)
+  }
   renderSummary(null)
   renderModelList(null)
-  renderHistoryChart([])
+  renderHistoryChart([], isCodexProvider() ? 'codex' : 'claude')
   dom.lastUpdated.textContent = 'waiting for first sync'
 }
 
@@ -527,9 +666,13 @@ function applyTheme() {
     : state.settings.theme
 
   document.documentElement.dataset.theme = preferred
+  document.body.dataset.provider = normalizeProvider(state.settings.activeProvider)
 
-  if (state.usage?.local) {
-    renderHistoryChart(state.usage.local.history || [])
+  if (state.usage) {
+    renderHistoryChart(
+      isCodexProvider() ? (state.usage.codex?.local?.history || []) : (state.usage.claude?.local?.history || []),
+      isCodexProvider() ? 'codex' : 'claude'
+    )
   }
 }
 
@@ -548,7 +691,9 @@ function syncSettingsForm() {
 function syncUiFromSettings() {
   syncSettingsForm()
   applyTheme()
+  applyProviderLabels()
 
+  document.body.dataset.provider = normalizeProvider(state.settings.activeProvider)
   document.body.classList.toggle('compact-mode', !!state.settings.compactMode)
   document.body.classList.toggle('settings-open', !!state.settingsOpen)
   document.body.classList.toggle('details-open', effectiveDetailsOpen() && !state.settingsOpen)
@@ -575,18 +720,21 @@ function scheduleHeightSync() {
     const target = state.settingsOpen ? dom.settingsPanel : dom.usagePanel
     if (!target || target.classList.contains('hidden')) return
 
-    const desired = dom.titlebar.offsetHeight + target.scrollHeight + 34
+    const desired = dom.titlebar.offsetHeight + target.scrollHeight + 8
     window.api.setWindowHeight(desired)
   })
 }
 
 function saveSettingsPatch(patch, { optimistic = true } = {}) {
+  const nextPatch = { ...patch }
+  if ('activeProvider' in nextPatch) nextPatch.activeProvider = normalizeProvider(nextPatch.activeProvider)
+
   if (optimistic) {
-    state.settings = { ...state.settings, ...patch }
+    state.settings = { ...state.settings, ...nextPatch }
     syncUiFromSettings()
   }
 
-  window.api.saveSettings(patch)
+  window.api.saveSettings(nextPatch)
 }
 
 function openSettingsPanel({ fromMain = false } = {}) {
@@ -628,6 +776,14 @@ function persistThresholds(changed) {
 function bindEvents() {
   dom.btnMinimize.addEventListener('click', () => window.api.minimize())
   dom.btnClose.addEventListener('click', () => window.api.close())
+  dom.btnProviderClaude.addEventListener('click', () => {
+    if (dom.btnProviderClaude.disabled || !isCodexProvider()) return
+    saveSettingsPatch({ activeProvider: 'claude' }, { optimistic: false })
+  })
+  dom.btnProviderCodex.addEventListener('click', () => {
+    if (dom.btnProviderCodex.disabled || isCodexProvider()) return
+    saveSettingsPatch({ activeProvider: 'codex' }, { optimistic: false })
+  })
   dom.btnRefresh.addEventListener('click', () => window.api.requestUsage())
 
   dom.btnDetails.addEventListener('click', () => {
@@ -755,7 +911,7 @@ function bindIpc() {
   })
 
   window.api.onSettings((settings) => {
-    state.settings = { ...state.settings, ...settings }
+    state.settings = { ...state.settings, ...settings, activeProvider: normalizeProvider(settings?.activeProvider) }
     syncUiFromSettings()
   })
 
