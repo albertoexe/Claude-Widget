@@ -26,6 +26,7 @@
         <button id="btn-provider-codex" class="provider-btn" title="Show Codex usage">Codex</button>
       </div>
     </div>
+    <div id="titlebar-drag-region" aria-hidden="true"></div>
     <div id="titlebar-right">
       <span id="org-name" class="org-badge"></span>
       <div id="window-controls">
@@ -71,6 +72,10 @@
           </div>
           <div class="bar-track">
             <div class="bar-fill" id="session-bar" style="width:0%"></div>
+            <div class="bar-overlay">
+              <span class="bar-overlay-pct" id="session-pct-compact">?</span>
+              <span class="bar-overlay-reset" id="session-reset-compact"></span>
+            </div>
           </div>
           <span class="row-reset" id="session-reset"></span>
         </div>
@@ -82,6 +87,10 @@
           </div>
           <div class="bar-track">
             <div class="bar-fill" id="weekly-bar" style="width:0%"></div>
+            <div class="bar-overlay">
+              <span class="bar-overlay-pct" id="weekly-pct-compact">?</span>
+              <span class="bar-overlay-reset" id="weekly-reset-compact"></span>
+            </div>
           </div>
           <span class="row-reset" id="weekly-reset"></span>
         </div>

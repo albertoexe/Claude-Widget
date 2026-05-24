@@ -38,7 +38,7 @@ const CODEX_SESSIONS_PATH = path.join(os.homedir(), '.codex', 'sessions')
 const WIN = {
   login:    { width: 380, height: 280 },
   widget:   { width: 380, height: 280 },
-  compact:  { width: 340, height: 88  },
+  compact:  { width: 196, height: 76  },
   settings: { width: 380, height: 460 }
 }
 
@@ -959,3 +959,5 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => { /* intentional no-op */ })
 app.on('activate', () => { if (mainWindow) mainWindow.show() })
 app.on('before-quit', () => stopRefreshLoop())
+
+

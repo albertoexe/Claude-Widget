@@ -119,6 +119,8 @@ button, input, select { font: inherit; }
   align-items: center;
   gap: 8px;
   -webkit-app-region: no-drag;
+  position: relative;
+  z-index: 2;
 }
 
 #titlebar-right {
@@ -126,6 +128,17 @@ button, input, select { font: inherit; }
   align-items: center;
   gap: 8px;
   -webkit-app-region: no-drag;
+  position: relative;
+  z-index: 2;
+}
+
+#titlebar-drag-region {
+  flex: 1 1 auto;
+  min-width: 12px;
+  height: 100%;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 1;
 }
 
 .provider-toggle {
@@ -165,13 +178,6 @@ button, input, select { font: inherit; }
 .provider-btn.is-active {
   color: var(--text);
   background: var(--provider-accent-soft);
-}
-
-#titlebar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  -webkit-app-region: no-drag;
 }
 
 .org-badge {
@@ -442,11 +448,40 @@ select:focus {
 }
 
 .bar-track {
+  position: relative;
   width: 100%;
   height: 4px;
   background: var(--bg-bar);
   border-radius: 999px;
   overflow: hidden;
+}
+
+.bar-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.bar-overlay-pct {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.bar-overlay-reset {
+  font-size: 8.5px;
+  color: color-mix(in oklab, var(--text) 72%, var(--dim));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .bar-fill {
   height: 100%;
@@ -717,9 +752,91 @@ select:focus {
    ───────────────────────────────────────────── */
 body.compact-mode #row-monthly,
 body.compact-mode #details-panel,
-body.compact-mode .widget-footer { display: none !important; }
-body.compact-mode .widget-body   { gap: 11px; }
-body.compact-mode .panel         { padding: 12px 14px; }
+body.compact-mode .widget-footer,
+body.compact-mode #btn-refresh,
+body.compact-mode #btn-details,
+body.compact-mode #btn-settings,
+body.compact-mode .org-badge { display: none !important; }
+body.compact-mode {
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+body.compact-mode #titlebar {
+  height: 26px;
+  padding: 6px 7px 1px 7px;
+  border-bottom: none;
+}
+body.compact-mode #titlebar-left {
+  flex: 0 0 auto;
+  min-width: fit-content;
+}
+body.compact-mode .provider-toggle {
+  width: fit-content;
+}
+body.compact-mode .provider-btn {
+  min-width: 40px;
+  height: 17px;
+  padding: 0 7px;
+  font-size: 9px;
+}
+body.compact-mode #titlebar-drag-region {
+  flex: 1 1 10px;
+  min-width: 10px;
+}
+body.compact-mode #titlebar-right {
+  gap: 4px;
+}
+body.compact-mode #window-controls {
+  gap: 2px;
+}
+body.compact-mode #window-controls button {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+}
+body.compact-mode .panel {
+  padding: 1px 8px 8px;
+}
+body.compact-mode .widget-body {
+  gap: 6px;
+}
+body.compact-mode .usage-row {
+  gap: 2px;
+}
+body.compact-mode .row-header {
+  align-items: center;
+}
+body.compact-mode .row-header .row-pct,
+body.compact-mode .row-reset {
+  display: none !important;
+}
+body.compact-mode .row-label {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  gap: 0;
+}
+body.compact-mode .bar-track {
+  height: 14px;
+  background: color-mix(in oklab, var(--bg-soft) 82%, var(--bg-bar));
+  box-shadow: inset 0 0 0 0.5px var(--border);
+}
+body.compact-mode .bar-fill {
+  opacity: 0.95;
+}
+body.compact-mode .bar-overlay {
+  display: flex;
+  gap: 6px;
+  padding: 0 5px;
+}
+body.compact-mode .bar-overlay-pct {
+  font-size: 8.5px;
+}
+body.compact-mode .bar-overlay-reset {
+  font-size: 8px;
+}
+body.compact-mode #btn-compact {
+  display: inline-flex;
+}
 
 body.settings-open #btn-details,
 body.settings-open #btn-compact { opacity: 0.4; }
@@ -731,3 +848,4 @@ body.settings-open #btn-compact { opacity: 0.4; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+

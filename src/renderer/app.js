@@ -56,13 +56,17 @@ const metricDom = {
   session: {
     row: byId('row-session'),
     pct: byId('session-pct'),
+    pctCompact: byId('session-pct-compact'),
     reset: byId('session-reset'),
+    resetCompact: byId('session-reset-compact'),
     bar: byId('session-bar')
   },
   weekly: {
     row: byId('row-weekly'),
     pct: byId('weekly-pct'),
+    pctCompact: byId('weekly-pct-compact'),
     reset: byId('weekly-reset'),
+    resetCompact: byId('weekly-reset-compact'),
     bar: byId('weekly-bar')
   },
   monthly: {
@@ -139,8 +143,8 @@ function normalizeProvider(value) {
 function applyProviderLabels() {
   const codex = isCodexProvider()
 
-  dom.labelSession.textContent = 'Session'
-  dom.labelWeekly.textContent = 'Weekly'
+  dom.labelSession.textContent = state.settings.compactMode ? 'S' : 'Session'
+  dom.labelWeekly.textContent = state.settings.compactMode ? 'W' : 'Weekly'
   dom.labelMonthly.textContent = 'Monthly'
   dom.badgeMonthly.classList.toggle('hidden', codex)
   metricDom.monthly.row.classList.toggle('hidden', codex)
@@ -264,8 +268,8 @@ function startCountdowns(sessionResetsAt, weeklyResetsAt) {
   stopCountdowns()
 
   const tick = () => {
-    metricDom.session.reset.textContent = formatReset(sessionResetsAt) || 'waiting for sync'
-    metricDom.weekly.reset.textContent = formatReset(weeklyResetsAt) || 'waiting for sync'
+    setMetricText(metricDom.session, metricDom.session.pct.textContent, formatReset(sessionResetsAt) || 'waiting for sync', formatCompactReset(sessionResetsAt))
+    setMetricText(metricDom.weekly, metricDom.weekly.pct.textContent, formatReset(weeklyResetsAt) || 'waiting for sync', formatCompactReset(weeklyResetsAt))
   }
 
   tick()
@@ -300,6 +304,38 @@ function setMetricVariant(key, variant) {
   if (variant) metric.bar.classList.add(variant)
 }
 
+function setMetricText(metric, pctText, resetText, compactText = null) {
+  metric.pct.textContent = pctText
+  if (metric.pctCompact) metric.pctCompact.textContent = pctText
+  metric.reset.textContent = resetText
+  if (metric.resetCompact) metric.resetCompact.textContent = compactText ?? compactResetText(resetText)
+}
+
+function compactResetText(text) {
+  if (!text) return 'sync'
+  return String(text)
+    .replace(/^resets in\s+/i, '')
+    .replace(/^resetting\.\.\.$/i, 'now')
+    .replace(/^waiting for\s+/i, '')
+}
+
+function formatCompactReset(value) {
+  const date = parseDateValue(value)
+  if (!date) return 'sync'
+
+  const diff = date.getTime() - Date.now()
+  if (!Number.isFinite(diff) || diff <= 0) return 'now'
+
+  const totalMinutes = Math.floor(diff / 60000)
+  const days = Math.floor(totalMinutes / (24 * 60))
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+  const minutes = totalMinutes % 60
+
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${Math.max(1, minutes)}m`
+}
+
 function renderApiMetric(key, pct, resetsAt) {
   const metric = metricDom[key]
   if (!metric) return
@@ -309,16 +345,14 @@ function renderApiMetric(key, pct, resetsAt) {
   setRowState(metric.row, severity)
 
   if (pct == null || Number.isNaN(Number(pct))) {
-    metric.pct.textContent = '-'
+    setMetricText(metric, '-', resetsAt ? formatReset(resetsAt) : 'waiting for sync', formatCompactReset(resetsAt))
     metric.bar.style.width = '0%'
-    metric.reset.textContent = resetsAt ? formatReset(resetsAt) : 'waiting for sync'
     return
   }
 
   const clamped = Math.max(0, Math.min(100, Number(pct)))
-  metric.pct.textContent = formatPercent(clamped)
+  setMetricText(metric, formatPercent(clamped), formatReset(resetsAt) || 'waiting for sync', formatCompactReset(resetsAt))
   metric.bar.style.width = `${clamped}%`
-  metric.reset.textContent = formatReset(resetsAt) || 'waiting for sync'
 }
 
 function renderTokenMetric(key, value, subtitle, baseline) {
@@ -353,15 +387,13 @@ function renderCodexLimitMetric(key, usedPct, resetsAt) {
   setRowState(metric.row, getSeverity(normalizedUsed))
 
   if (normalizedUsed == null || Number.isNaN(normalizedUsed)) {
-    metric.pct.textContent = '-'
+    setMetricText(metric, '-', resetsAt ? formatReset(resetsAt) : 'waiting for sync', formatCompactReset(resetsAt))
     metric.bar.style.width = '0%'
-    metric.reset.textContent = resetsAt ? formatReset(resetsAt) : 'waiting for sync'
     return
   }
 
-  metric.pct.textContent = formatPercent(normalizedUsed)
+  setMetricText(metric, formatPercent(normalizedUsed), formatReset(resetsAt) || 'waiting for sync', formatCompactReset(resetsAt))
   metric.bar.style.width = `${normalizedUsed}%`
-  metric.reset.textContent = formatReset(resetsAt) || 'waiting for sync'
 }
 
 function renderMonthly(local) {
